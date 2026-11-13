@@ -151,3 +151,26 @@ test('offers a reload when the image export module is unavailable', async ({ pag
   await page.locator('#process').click();
   await result(page, 'page-images.zip');
 });
+
+test('adds watermark and numbering through a continuous PDF workflow', async ({ page }) => {
+  await page.goto('/#/watermark-pdf');
+  await page.locator('#picker').setInputFiles(await fixture('source.pdf', [300, 300], 'Original text'));
+  await page.getByLabel('Watermark text').fill('DRAFT');
+  await page.getByLabel('Pages to keep').fill('2');
+  await page.locator('#process').click();
+  await result(page, 'watermarked.pdf');
+  await page.getByLabel('Continue with this PDF').selectOption('numbers');
+  await page.getByRole('button', { name: 'Open tool', exact: true }).click();
+  await page.getByLabel('Start numbering at').fill('7');
+  await page.locator('#process').click();
+  await result(page, 'numbered.pdf');
+  await page.getByLabel('Continue with this PDF').selectOption('word');
+  await page.getByRole('button', { name: 'Open tool', exact: true }).click();
+  await page.locator('#process').click();
+  const zip = await JSZip.loadAsync(await result(page, 'converted.docx'));
+  const xml = await zip.file('word/document.xml').async('string');
+  expect(xml.match(/DRAFT/g)).toHaveLength(1);
+  expect(xml).toContain('Original text');
+  expect(xml).toMatch(/>7</);
+  expect(xml).toMatch(/>8</);
+});

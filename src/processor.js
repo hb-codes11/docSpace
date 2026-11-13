@@ -2,7 +2,7 @@ import { combine, openPdf, pageSelection } from './pdf.js';
 import { MAX_BYTES, MAX_PAGES } from './limits.js';
 
 
-self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, lines } }) => {
+self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, lines, stampOptions } }) => {
   try {
     if (files.reduce((size, file) => size + file.size, 0) > MAX_BYTES) {
       throw new Error('Choose files totaling 100 MB or less.');
@@ -21,6 +21,13 @@ self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, l
       pageCount += pdf.getPageCount();
       if (pageCount > MAX_PAGES) throw new Error('Choose files totaling 500 pages or less.');
       groups.push({ pdf });
+    }
+
+    if (mode === 'watermark' || mode === 'numbers') {
+      const { stampPdf } = await import('./stamp.js');
+      const bytes = await stampPdf(groups[0].pdf, mode, stampOptions, selection);
+      self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: mode === 'watermark' ? 'watermarked.pdf' : 'numbered.pdf' });
+      return;
     }
 
     if (mode === 'split') {

@@ -5,7 +5,7 @@ export const privacyPolicyContent = `
   <p class="legal-effective">Last updated: November 2026</p>
 
   <h3>1. 100% On-Device Processing Guarantee</h3>
-  <p>At <strong>docSpace</strong>, we believe your personal, legal, and financial documents belong exclusively to you. Unlike traditional cloud-based document converters, <strong>docSpace processes all PDF and Word files entirely on your device</strong> using in-browser WebAssembly and JavaScript libraries (including pdf-lib, PDF.js, and docx).</p>
+  <p>At <strong>docSpace</strong>, we believe your personal, legal, and financial documents belong exclusively to you. Unlike traditional cloud-based document converters, <strong>docSpace processes all PDF and Word files entirely on your device</strong> using in-browser browser processing and JavaScript libraries (including pdf-lib, PDF.js, and docx).</p>
   <p><strong>Your files, filenames, text streams, and images are never transmitted to, uploaded to, or stored on any remote server.</strong> All operations execute locally in your computer or mobile device's transient memory.</p>
 
   <h3>2. Information We Collect</h3>
@@ -55,7 +55,7 @@ export const aboutContent = `
   <p><strong>docSpace</strong> was engineered to solve a fundamental problem on the modern web: <em>why do users have to upload confidential tax returns, legal contracts, medical forms, and bank statements to mysterious cloud servers just to merge two PDFs or rotate a single page?</em></p>
 
   <h3>Modern Web Architecture</h3>
-  <p>Using modern WebAssembly, Web Workers, and standards-compliant browser APIs, docSpace delivers desktop-grade PDF and Word utilities directly in your browser tab:</p>
+  <p>Using modern browser processing, Web Workers, and standards-compliant browser APIs, docSpace delivers desktop-grade PDF and Word utilities directly in your browser tab:</p>
   <ul>
     <li><strong>Zero File Uploads:</strong> Document bytes remain isolated in local sandbox memory.</li>
     <li><strong>Instant Speed:</strong> No waiting for multi-megabyte uploads, server queue processing, or download links.</li>

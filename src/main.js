@@ -25,6 +25,7 @@ let files = [];
 let job;
 let timer;
 let objectUrl;
+let resultFile;
 let account;
 let session;
 let userSelectedTool = false;
@@ -36,7 +37,7 @@ app.innerHTML = `
   <div class="shell top-inner">
     <a class="brand" href="/" aria-label="docSpace Home">
       <span class="brand-icon">${mergeIcon}</span>
-      <span>docSpace</span>
+      <span class="brand-name">docSpace</span>
     </a>
     <nav class="top-nav" aria-label="Main Navigation">
       <a class="nav-link" href="#tools-section">Tools</a>
@@ -51,13 +52,13 @@ app.innerHTML = `
 </header>
 
 <section class="shell hero" id="tools-section">
-  <div class="hero-pill">${zapIcon} Private Client-Side Document Studio</div>
-  <h1>Fast, Private PDF & Word Tools <span class="hero-gradient">On Your Device</span></h1>
-  <p>No file uploads. No server queues. Merge, split, organize, compress, and convert documents with on-device processing.</p>
+  <div class="hero-eyebrow">${zapIcon} ${Object.keys(tools).length} free tools — no uploads, no account</div>
+  <h1>Your documents,<br><span class="hero-gradient-text">sorted.</span></h1>
+  <p>Everyday PDF &amp; Word tools. Everything runs privately on your device — files never leave your browser.</p>
   <div class="hero-badges">
-    <span class="hero-badge-item">${shieldIcon} 100% In-Browser Memory</span>
-    <span class="hero-badge-item">${lockIcon} Zero Server Uploads</span>
-    <span class="hero-badge-item">${zapIcon} Instant Local Processing</span>
+    <span class="hero-badge">${shieldIcon} 100% on-device</span>
+    <span class="hero-badge">${lockIcon} No file uploads</span>
+    <span class="hero-badge">${zapIcon} Instant processing</span>
   </div>
 </section>
 
@@ -107,6 +108,12 @@ app.innerHTML = `
       </select>
     </div>
 
+    <div id="stamp-options" hidden>
+      <label id="watermark-label" for="watermark-text">Watermark text</label>
+      <input id="watermark-text" type="text" maxlength="80" placeholder="For example, DRAFT">
+      <label id="number-label" for="number-start">Start numbering at</label>
+      <input id="number-start" type="number" min="1" max="99999" value="1">
+    </div>
     <p id="page-feedback" aria-live="polite"></p>
     <ol id="page-grid" aria-label="PDF pages" hidden></ol>
 
@@ -116,6 +123,11 @@ app.innerHTML = `
       <button class="primary" id="process" hidden></button>
       <button class="outline" id="cancel" hidden>Cancel</button>
       <a class="primary" id="download" hidden>Download</a>
+      <div id="continue-options" hidden>
+        <label for="next-tool">Continue with this PDF</label>
+        <select id="next-tool">${Object.values(tools).filter(tool => !tool.kind && tool.id !== 'merge').map(tool => `<option value="${tool.id}">${tool.title}</option>`).join('')}</select>
+        <button id="continue-tool" class="outline">Open tool</button>
+      </div>
     </div>
   </section>
 </main>
@@ -134,10 +146,10 @@ app.innerHTML = `
       <div class="footer-col">
         <a class="brand" href="/" style="margin-bottom: 12px; display:inline-flex;">
           <span class="brand-icon">${mergeIcon}</span>
-          <span>docSpace</span>
+          <span class="brand-name">docSpace</span>
         </a>
         <p>A fast, 100% private, client-side web application for local PDF and Word workflows. Your confidential files never leave your device.</p>
-        <span class="private" style="display:inline-flex;">${shieldIcon} 100% Client-Side Privacy Guaranteed</span>
+        <span class="private" style="display:inline-flex;">${shieldIcon} Files processed on your device</span>
       </div>
       <div class="footer-col">
         <h4>PDF Workflows</h4>
@@ -168,7 +180,7 @@ app.innerHTML = `
     </div>
     <div class="footer-bottom">
       <span>&copy; ${new Date().getFullYear()} docSpace. All rights reserved.</span>
-      <span>Engineered with WebAssembly & PostgreSQL RLS</span>
+      <span>Built for private document workflows</span>
     </div>
   </div>
 </footer>
@@ -238,6 +250,8 @@ function updateProcessButton() {
 function clearResult() {
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
+  resultFile = undefined;
+  $('continue-options').hidden = true;
   download.removeAttribute('href');
   download.hidden = true;
   $('reload-tool').hidden = true;
@@ -312,10 +326,14 @@ function render(focusIndex, action) {
   $('process').hidden = !files.length || Boolean(job);
   updateProcessButton();
   $('cancel').hidden = !job;
-  $('split-options').hidden = !['split', 'export'].includes(mode) || !files.length;
+  $('split-options').hidden = !['split', 'export', 'watermark', 'numbers'].includes(mode) || !files.length;
   $('zip-option').hidden = mode !== 'split';
   $('image-options').hidden = mode !== 'export' || !files.length;
   $('pages').disabled = $('separate').disabled = $('image-format').disabled = Boolean(job);
+  $('stamp-options').hidden = !['watermark', 'numbers'].includes(mode) || !files.length;
+  $('watermark-label').hidden = $('watermark-text').hidden = mode !== 'watermark';
+  $('number-label').hidden = $('number-start').hidden = mode !== 'numbers';
+  $('watermark-text').disabled = $('number-start').disabled = Boolean(job);
   pagePicker.setDisabled(Boolean(job));
 
   for (const button of document.querySelectorAll('[data-mode]')) {
@@ -424,6 +442,10 @@ function finish(data) {
   download.download = data.filename;
   download.textContent = 'Download ' + data.filename;
   download.hidden = false;
+  if (data.blob.type === 'application/pdf') {
+    resultFile = new File([data.blob], data.filename, { type: 'application/pdf' });
+    $('continue-options').hidden = false;
+  }
   report('Your download is ready.');
   download.focus();
 
@@ -433,6 +455,15 @@ function finish(data) {
   }
 }
 
+$('watermark-text').oninput = $('number-start').oninput = clearResult;
+$('continue-tool').onclick = () => {
+  if (!resultFile || job) return;
+  const file = resultFile;
+  chooseTool($('next-tool').value);
+  files = [];
+  addFiles([file]);
+  $('tool-title').scrollIntoView({ block: 'center' });
+};
 $('reload-tool').onclick = () => location.reload();
 $('browse').onclick = () => picker.click();
 picker.onchange = () => {
@@ -510,6 +541,7 @@ $('process').onclick = () => {
     separate: $('separate').checked,
     pageEdits: pagePicker.getEdits(),
     imageFormat: $('image-format').value,
+    stampOptions: { text: $('watermark-text').value, start: $('number-start').value },
   };
   runJob(current, data, controller.signal).catch(error => {
     if (job !== current) return;

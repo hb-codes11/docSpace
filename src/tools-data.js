@@ -7,6 +7,9 @@ import compressIcon from 'lucide-static/icons/minimize-2.svg?raw';
 import docxIcon from 'lucide-static/icons/file-up.svg?raw';
 import wordIcon from 'lucide-static/icons/file-text.svg?raw';
 
+import stampIcon from 'lucide-static/icons/stamp.svg?raw';
+import numbersIcon from 'lucide-static/icons/list-ordered.svg?raw';
+
 export const tools = {
   merge: {
     id: 'merge',
@@ -27,10 +30,10 @@ export const tools = {
     features: [
       'Preserves original vector clarity, embedded typography, and crisp resolution.',
       'Supports merging up to 50 individual PDF files totaling up to 100 MB.',
-      'Complete privacy: files are merged in your local browser memory using WebAssembly.'
+      'Complete privacy: files are merged in your local browser memory using browser processing.'
     ],
     faqs: [
-      { q: 'Are my uploaded PDFs stored on your servers?', a: 'No. docSpace processes every document directly inside your web browser using WebAssembly. Your files never leave your device.' },
+      { q: 'Are my uploaded PDFs stored on your servers?', a: 'No. docSpace processes every document directly inside your web browser using browser processing. Your files never leave your device.' },
       { q: 'Is there a limit on how many PDFs I can merge?', a: 'You can merge up to 50 documents totaling up to 100 MB and 500 total pages per batch.' },
       { q: 'Can I reorder the files before merging?', a: 'Yes. Simply drag files up or down in the list, or use the handy arrow controls to set the precise ordering.' }
     ]
@@ -220,6 +223,28 @@ export const tools = {
       { q: 'Can this convert scanned images of text to Word?', a: 'The document must contain selectable text characters. Scanned image-only PDFs require OCR first.' },
       { q: 'Can I edit the output in Google Docs?', a: 'Yes! The generated DOCX file can be opened directly in Google Docs, Word, or Pages.' }
     ]
+  },
+  watermark: {
+    id: 'watermark', slug: 'watermark-pdf', title: 'Watermark PDF',
+    summary: 'Mark selected pages with text', icon: stampIcon,
+    hint: 'Add a translucent centered watermark to selected pages. Supports unrotated PDFs and Western European text.',
+    steps: [
+      { title: 'Choose a PDF', desc: 'Your document stays on this device.' },
+      { title: 'Enter your watermark', desc: 'Choose the text and page range.' },
+      { title: 'Save your PDF', desc: 'Download the marked copy or continue in another tool.' }
+    ],
+    faqs: [{ q: 'Does a watermark protect the document?', a: 'It adds a visible label. It does not restrict copying or editing.' }]
+  },
+  numbers: {
+    id: 'numbers', slug: 'page-numbers', title: 'Page numbers',
+    summary: 'Number selected PDF pages', icon: numbersIcon,
+    hint: 'Place page numbers at the bottom center. Choose a range and a starting number. Supports unrotated PDFs.',
+    steps: [
+      { title: 'Choose a PDF', desc: 'Open an unrotated PDF.' },
+      { title: 'Set the numbering', desc: 'Enter a starting number and optionally choose pages.' },
+      { title: 'Save the numbered copy', desc: 'Download or continue with another PDF tool.' }
+    ],
+    faqs: [{ q: 'How are selected pages numbered?', a: 'Numbers increment in the order of your selected range, starting at the number you enter.' }]
   }
 };
 
