@@ -1,23 +1,24 @@
 # docSpace
 
-**Ten PDF and Word tools that run in your browser.** Combine, organize, convert, compress, and mark up documents while keeping your files on your device.
+**A personal project for everyday PDF and Word work.** Merge files, rearrange pages, or convert a document right in your browser.
 
 [![Build and browser tests](https://github.com/hb-codes11/docSpace/actions/workflows/check.yml/badge.svg)](https://github.com/hb-codes11/docSpace/actions/workflows/check.yml)
 
-[Quick start](#quick-start) · [Tools](#tools) · [Architecture](#architecture) · [Deploy to Netlify](#deploy-to-netlify) · [Roadmap](ROADMAP.md)
+[Tools](#tools) · [Run locally](#run-locally) · [Under the hood](#under-the-hood) · [Deploy](#deploy-to-netlify) · [Roadmap](ROADMAP.md)
 
-## Highlights
+## What makes docSpace useful
 
-- **Process documents in your browser.** The core tools work without an account. Inputs and results stay in browser memory until you download a copy.
-- **See the pages you’re working on.** Use thumbnails to select, reorder, rotate, or remove pages. Use page ranges when you already know which pages you need.
-- **Keep working with the result.** After a tool creates a PDF, use **Continue with this PDF** to open the result in another compatible tool without selecting it again. For example, merge a report and its appendices, number the combined pages, then watermark the final PDF.
-- **Use the same workspace on desktop and mobile.** The tool rail becomes a horizontally scrollable picker on smaller screens.
+- **Your files stay on your device.** The ten tools work in the browser and are available without signing in.
+- **Work with pages visually.** Select thumbnails, drag pages into order, or enter a range like `1-3, 7`.
+- **Pick up where the last tool finished.** **Continue with this PDF** carries the output into another tool. The workspace adapts to desktop and mobile.
+
+> **Try a report workflow.** Merge your report and appendices, number the combined pages, then add a draft watermark. Download the finished PDF when you’re ready.
 
 ## Tools
 
 | Tool | What it does |
 | --- | --- |
-| [Merge PDFs](src/tools-data.js) | Combines multiple PDFs in the order you choose. |
+| Merge PDFs | Combines multiple PDFs in the order you choose. |
 | Split PDF | Extracts a range into one PDF or exports one PDF per selected page in a ZIP. |
 | Organize PDF | Reorders, rotates, and removes pages with a thumbnail preview. |
 | Images to PDF | Combines JPG and PNG files into a PDF. |
@@ -30,7 +31,7 @@
 
 The file queue accepts up to 50 files and 100 MB total. PDF processing is limited to 500 pages per job, with lower limits for some tools. Available memory and document complexity affect how large a job the browser can handle.
 
-## Quick start
+## Run locally
 
 Requires Node.js 22.13 or later and npm.
 
@@ -41,7 +42,9 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. Start with two small PDFs to try merging, then send the result to **Page numbers**.
+Open the local URL printed by Vite, usually `http://localhost:5173/`.
+
+### Run the checks
 
 ```sh
 npm test
@@ -52,7 +55,7 @@ npm run test:e2e
 
 The browser suite runs against the production build. It verifies downloaded files, mobile layout, browser navigation, recovery when a conversion module is missing, and chaining watermarking and page numbering. GitHub Actions runs the build and tests on pushes and pull requests.
 
-## Architecture
+## Under the hood
 
 | Area | Implementation |
 | --- | --- |
@@ -62,18 +65,18 @@ The browser suite runs against the production build. It verifies downloaded file
 | Accounts | Optional Supabase email sign-in stores the last-used tool and per-account usage counts. The database migrations set row-level security on account tables. |
 | Delivery | Vite builds static files into `dist/`. Netlify and Vercel configurations provide routing and headers. Earlier fingerprinted bundles in `public/assets/` help open tabs finish conversions after a release. |
 
-The core tools send no document bytes or filenames to Supabase. Closing or refreshing a tab clears the current workspace. Optional ads load a third-party script when configured.
+The core tools send no document bytes or filenames to Supabase. Closing or refreshing a tab clears the current workspace.
 
 ## Deploy to Netlify
 
 1. In Netlify, import [`hb-codes11/docSpace`](https://github.com/hb-codes11/docSpace) and select the `main` branch.
 2. Use the repository root. [`netlify.toml`](netlify.toml) sets Node 22, the build command `npm run build`, the publish directory `dist`, and the app route fallback.
-3. Add optional build variables before deploying if you want accounts or ads. Leave them blank for guest mode.
+3. Leave the environment variables blank to deploy in guest mode. Set the Supabase variables below if you want optional accounts.
 4. Deploy and open the resulting HTTPS URL. Check a tool route such as `/#/pdf-to-images`, convert a sample document, and confirm the ZIP downloads.
 
 For Vercel, import the same repository as a Vite project. The included [`vercel.json`](vercel.json) supplies the build settings and routing.
 
-### Optional accounts and ads
+### Optional accounts
 
 1. Apply every SQL file in [`supabase/migrations/`](supabase/migrations/) in filename order. This sets up preferences, profiles, usage counts, and the tool catalog constraints.
 2. In Supabase Auth, set the deployment URL as the Site URL and allow the exact sign-in return URLs, including `http://localhost:5173/` for local testing.
@@ -83,13 +86,11 @@ For Vercel, import the same repository as a Vite project. The included [`vercel.
 | --- | --- |
 | `VITE_SUPABASE_URL` | Supabase project URL. |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Public browser key for Supabase. Keep secret and service-role keys out of the frontend. |
-| `VITE_ADSENSE_CLIENT_ID` | Optional AdSense publisher ID. |
-| `VITE_ADSENSE_SLOT_TOP` | Optional ID for the ad placement. |
 
 Rebuild after changing these variables. For a live account rollout, verify email sign-in and confirm two test accounts can access only their own records.
 
-## Where to contribute
+## Where it’s going
 
-Start with the [product roadmap](ROADMAP.md) for planned work on previews, editing, OCR, conversion fidelity, and offline installation. For bug reports, include the tool, browser, and steps to reproduce. Use a synthetic sample when a document is needed to reproduce the issue.
+I’m building docSpace as a personal project and plan to expand it over time. The [roadmap](ROADMAP.md) tracks page previews and undo, form filling, visual signatures, on-device OCR, better Word conversion, and offline installation.
 
-`src/` contains the interface and document processing. `tests/` covers the core PDF operations. `e2e/` exercises the tools through the browser.
+Found a bug? [Open an issue](https://github.com/hb-codes11/docSpace/issues/new) with the tool, browser, and steps to reproduce. Use a synthetic sample if a document is needed to reproduce it.
