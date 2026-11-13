@@ -1,97 +1,95 @@
 # docSpace
 
-docSpace is a fast, responsive, 100% private web application for client-side PDF and Word workflows.
+**Ten PDF and Word tools that run in your browser.** Combine, organize, convert, compress, and mark up documents while keeping your files on your device.
 
-| Tool | Route | Output |
-| --- | --- | --- |
-| Merge PDFs | `/merge-pdf` | Combine files in queue order. Drag to reorder or use arrow controls. |
-| Split PDF | `/split-pdf` | Select thumbnails or enter ranges. Download a single PDF or one PDF per page in a ZIP. |
-| Organize PDF | `/organize-pdf` | Drag or move thumbnails, rotate pages 90°, and remove unwanted pages. |
-| Images to PDF | `/images-to-pdf` | Combine JPG and PNG files into a clean PDF. |
-| PDF to images | `/pdf-to-images` | Export selected pages as JPG or PNG in a ZIP archive, up to 50 pages at a time. |
-| Compress scan | `/compress-pdf` | Render up to 50 pages as lower-resolution JPEGs. Downloads only when output is smaller. |
-| Word to PDF | `/word-to-pdf` | Create a plain-text PDF from a DOCX file. Supports Western European characters. |
-| PDF to Word | `/pdf-to-word` | Create an editable DOCX from selectable PDF text with paragraph breaks. |
+[![Build and browser tests](https://github.com/hb-codes11/docSpace/actions/workflows/check.yml/badge.svg)](https://github.com/hb-codes11/docSpace/actions/workflows/check.yml)
 
----
+[Quick start](#quick-start) · [Tools](#tools) · [Architecture](#architecture) · [Deploy to Netlify](#deploy-to-netlify) · [Roadmap](ROADMAP.md)
 
-## Scalable Architecture
+## Highlights
 
-1. **Client-Side WebAssembly & Workers:**
-   - Computation runs entirely in the user's browser using `pdf-lib`, `PDF.js`, `docx`, and `JSZip`.
-   - Dedicated Web Workers prevent UI freezes during heavy operations.
-   - Zero document bytes or file contents ever touch external servers.
+- **Process documents in your browser.** The core tools work without an account. Inputs and results stay in browser memory until you download a copy.
+- **See the pages you’re working on.** Use thumbnails to select, reorder, rotate, or remove pages. Use page ranges when you already know which pages you need.
+- **Keep working with the result.** After a tool creates a PDF, use **Continue with this PDF** to open the result in another compatible tool without selecting it again. For example, merge a report and its appendices, number the combined pages, then watermark the final PDF.
+- **Use the same workspace on desktop and mobile.** The tool rail becomes a horizontally scrollable picker on smaller screens.
 
-2. **SEO & Dynamic Landing Pages:**
-   - Dedicated clean routes for every tool (`/merge-pdf`, `/split-pdf`, `/organize-pdf`, etc.) with dynamic OpenGraph meta tags and Schema.org `WebApplication` structured data.
-   - Comprehensive landing content below each tool: 3-step How-To instructions, privacy benchmarks, technical limits, and interactive FAQs.
+## Tools
 
-3. **Google AdSense Ready:**
-   - Policy-compliant responsive ad unit containers (`top` leaderboard and mid-content slots) pre-styled with clean separation and "ADVERTISEMENT" labels.
-   - Zero layout shifts when ads are enabled.
-   - Compliant Privacy Policy, Terms of Service, and About pages accessible via modals and footer links.
+| Tool | What it does |
+| --- | --- |
+| [Merge PDFs](src/tools-data.js) | Combines multiple PDFs in the order you choose. |
+| Split PDF | Extracts a range into one PDF or exports one PDF per selected page in a ZIP. |
+| Organize PDF | Reorders, rotates, and removes pages with a thumbnail preview. |
+| Images to PDF | Combines JPG and PNG files into a PDF. |
+| PDF to images | Exports selected pages as JPG or PNG in a ZIP, up to 50 pages per export. |
+| Compress scan | Re-renders scanned pages as lower-resolution images and offers a download when the result is smaller. Selectable text, links, forms, and annotations are lost. |
+| PDF to Word | Exports selectable PDF text to an editable DOCX. OCR and original layout reconstruction are future work. |
+| Word to PDF | Creates a plain-text PDF from DOCX. Supports Western European characters and omits original formatting and images. |
+| Watermark PDF | Adds a translucent, centered text watermark to selected unrotated pages. Supports Western European characters. |
+| Page numbers | Adds bottom-centered numbering to selected unrotated pages, with a custom starting number. |
 
-4. **Vercel Deployment:**
-   - `vercel.json` configured with SPA rewrites to `/index.html`, immutable asset caching for fingerprinted assets, and robust HTTP security headers.
+The file queue accepts up to 50 files and 100 MB total. PDF processing is limited to 500 pages per job, with lower limits for some tools. Available memory and document complexity affect how large a job the browser can handle.
 
-5. **Supabase PostgreSQL Row Level Security (RLS):**
-   - Migration `20261113000000_scalable_schema_rls.sql` configures:
-     - `public.tool_preferences`: Synced user last-used tool preference with strict RLS (`auth.uid() = user_id`).
-     - `public.user_profiles`: User profile with auto-creation trigger on signup.
-     - `public.user_tool_stats`: User tool usage metrics with per-user RLS isolation.
+## Quick start
 
----
-
-## Developer Setup
-
-Requires Node 22.13 or later and npm.
+Requires Node.js 22.13 or later and npm.
 
 ```sh
+git clone https://github.com/hb-codes11/docSpace.git
+cd docSpace
 npm ci
 npm run dev
+```
+
+Open the local URL printed by Vite. Start with two small PDFs to try merging, then send the result to **Page numbers**.
+
+```sh
 npm test
 npm run build
+npx playwright install chromium
 npm run test:e2e
 ```
 
----
+The browser suite runs against the production build. It verifies downloaded files, mobile layout, browser navigation, recovery when a conversion module is missing, and chaining watermarking and page numbering. GitHub Actions runs the build and tests on pushes and pull requests.
 
-## Deployment to Vercel
+## Architecture
 
-1. Push your repository to GitHub or GitLab.
-2. Import the project into your [Vercel Dashboard](https://vercel.com/new).
-3. Framework Preset: **Vite**
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-4. Environment Variables (optional):
-   - `VITE_SUPABASE_URL`: Your Supabase Project URL
-   - `VITE_SUPABASE_PUBLISHABLE_KEY`: Your Supabase Publishable Key
-   - `VITE_ADSENSE_CLIENT_ID`: Your Google AdSense Publisher ID (e.g., `ca-pub-XXXXXXXXXXXXXXXX`)
-   - `VITE_ADSENSE_SLOT_TOP`: Ad unit slot ID for the top leaderboard
-   - `VITE_ADSENSE_SLOT_BOTTOM`: Ad unit slot ID for the bottom placement
-5. Deploy. Vercel automatically applies the `vercel.json` rewrites and caching headers.
+| Area | Implementation |
+| --- | --- |
+| Workspace | Vite serves a responsive JavaScript and CSS interface. The [tool catalog](src/tools-data.js) defines the controls’ labels, routes, and usage guides. |
+| PDF operations | [The processing worker](src/processor.js) uses pdf-lib for page operations and stamping. PDF.js renders thumbnails and page images and extracts selectable text. |
+| Conversion | docx creates editable Word exports. JSZip packages image and PDF downloads and reads DOCX input. |
+| Accounts | Optional Supabase email sign-in stores the last-used tool and per-account usage counts. The database migrations set row-level security on account tables. |
+| Delivery | Vite builds static files into `dist/`. Netlify and Vercel configurations provide routing and headers. Earlier fingerprinted bundles in `public/assets/` help open tabs finish conversions after a release. |
 
----
+The core tools send no document bytes or filenames to Supabase. Closing or refreshing a tab clears the current workspace. Optional ads load a third-party script when configured.
 
-## Supabase Setup & RLS
+## Deploy to Netlify
 
-1. Create a Supabase project at [supabase.com](https://supabase.com).
-2. Apply the SQL migrations in order from `supabase/migrations/` via the Supabase SQL Editor:
-   - `20261111000000_preferences.sql`
-   - `20261112000000_add_tools.sql`
-   - `20261113000000_scalable_schema_rls.sql`
-3. Under **Authentication > URL Configuration**:
-   - Set your Vercel deployment URL (e.g., `https://your-domain.vercel.app`) as the **Site URL**.
-   - Add your local dev URL (`http://localhost:5173/`) to **Redirect URLs**.
-4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in your `.env.local` or Vercel Environment Variables.
-5. All database operations strictly enforce Row Level Security (RLS) — users can access only their own records, and anonymous database access is denied.
+1. In Netlify, import [`hb-codes11/docSpace`](https://github.com/hb-codes11/docSpace) and select the `main` branch.
+2. Use the repository root. [`netlify.toml`](netlify.toml) sets Node 22, the build command `npm run build`, the publish directory `dist`, and the app route fallback.
+3. Add optional build variables before deploying if you want accounts or ads. Leave them blank for guest mode.
+4. Deploy and open the resulting HTTPS URL. Check a tool route such as `/#/pdf-to-images`, convert a sample document, and confirm the ZIP downloads.
 
----
+For Vercel, import the same repository as a Vite project. The included [`vercel.json`](vercel.json) supplies the build settings and routing.
 
-## Enabling Google AdSense
+### Optional accounts and ads
 
-When your domain starts receiving traffic and gets approved by Google AdSense:
-1. Add `VITE_ADSENSE_CLIENT_ID="ca-pub-XXXXXXXXXXXXXXXX"` and `VITE_ADSENSE_SLOT_TOP="1234567890"` to your environment variables.
-2. Re-deploy the site. docSpace automatically injects the Google AdSense script into the `<head>` and renders live responsive ad slots inside the pre-configured layout wrappers without any layout shift.
+1. Apply every SQL file in [`supabase/migrations/`](supabase/migrations/) in filename order. This sets up preferences, profiles, usage counts, and the tool catalog constraints.
+2. In Supabase Auth, set the deployment URL as the Site URL and allow the exact sign-in return URLs, including `http://localhost:5173/` for local testing.
+3. Copy [`.env.example`](.env.example) to `.env.local` for local development. On your host, set the same variables before building.
 
-Previously published fingerprinted bundles are retained in public/assets so open browser tabs can load their original conversion modules after deployment. Preserve these files when publishing updates.
+| Variable | Purpose |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Supabase project URL. |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Public browser key for Supabase. Keep secret and service-role keys out of the frontend. |
+| `VITE_ADSENSE_CLIENT_ID` | Optional AdSense publisher ID. |
+| `VITE_ADSENSE_SLOT_TOP` | Optional ID for the ad placement. |
+
+Rebuild after changing these variables. For a live account rollout, verify email sign-in and confirm two test accounts can access only their own records.
+
+## Where to contribute
+
+Start with the [product roadmap](ROADMAP.md) for planned work on previews, editing, OCR, conversion fidelity, and offline installation. For bug reports, include the tool, browser, and steps to reproduce. Use a synthetic sample when a document is needed to reproduce the issue.
+
+`src/` contains the interface and document processing. `tests/` covers the core PDF operations. `e2e/` exercises the tools through the browser.
