@@ -5,10 +5,13 @@ import { tools } from './tools-data.js';
 import { renderToolLanding } from './components/landing.js';
 import { privacyPolicyContent, termsOfServiceContent, aboutContent } from './components/legal.js';
 import { getInitialRoute, syncUrlAndMetadata } from './router.js';
+import { initTechText } from './components/TechText.js';
 
 import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
 import uploadIcon from 'lucide-static/icons/upload-cloud.svg?raw';
 import shieldIcon from 'lucide-static/icons/shield-check.svg?raw';
+import zapIcon from 'lucide-static/icons/zap.svg?raw';
+import lockIcon from 'lucide-static/icons/lock.svg?raw';
 
 const env = import.meta.env;
 const hasAccount = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
@@ -47,8 +50,14 @@ app.innerHTML = `
 </header>
 
 <section class="shell hero" id="tools-section">
-  <h1>Your documents,<br><span class="hero-gradient-text">sorted.</span></h1>
-  <p>Merge, organize, and convert documents in your browser.</p>
+  <div class="hero-eyebrow">${zapIcon} ${Object.keys(tools).length} free tools — no uploads, no account</div>
+  <div id="hero-tech-wordmark" class="hero-tech-container"></div>
+  <p>Merge, organize, stamp, and convert documents directly in your browser. Files never leave your device.</p>
+  <div class="hero-badges">
+    <span class="hero-badge">${shieldIcon} 100% on-device</span>
+    <span class="hero-badge">${lockIcon} No file uploads</span>
+    <span class="hero-badge">${zapIcon} Instant processing</span>
+  </div>
 </section>
 
 <main class="shell studio">
@@ -618,6 +627,29 @@ async function initAccount() {
 render();
 updateLandingContent();
 syncUrlAndMetadata(mode);
+
+// Initialize React Bits TechText component
+const techContainer = document.getElementById('hero-tech-wordmark');
+if (techContainer) {
+  initTechText(techContainer, {
+    text: 'docSpace',
+    fontWeight: 850,
+    fontSize: window.innerWidth < 640 ? 56 : 82,
+    letterSpacing: -0.04,
+    color: '#181528',
+    accentColor: '#7c3aed',
+    align: 'left',
+    reach: 160,
+    dashLength: 4,
+    dashGap: 2,
+    strokeWidth: 1.5,
+    draggable: true,
+    clickKick: true,
+    sweep: true,
+    labels: true,
+    specks: 12,
+  });
+}
 
 if (hasAccount) initAccount().catch(() => {
   $('account').disabled = true;
