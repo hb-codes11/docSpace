@@ -20,8 +20,8 @@ export const tools = {
     hint: 'Add at least two PDFs, then arrange them in the order you want.',
     icon: mergeIcon,
     multiple: true,
-    seoTitle: 'Merge PDF Files Online — Free, Fast & 100% Private | docSpace',
-    seoDescription: 'Combine multiple PDF documents into one unified file directly in your browser. 100% client-side privacy with zero file uploads or server queues.',
+    seoTitle: 'Merge PDFs | docSpace',
+    seoDescription: 'Combine PDFs in the order you choose.',
     steps: [
       { title: 'Upload PDFs', desc: 'Select or drag & drop two or more PDF documents into the queue.' },
       { title: 'Arrange Order', desc: 'Drag files or click arrow buttons to arrange pages in your exact preferred sequence.' },
@@ -76,7 +76,7 @@ export const tools = {
     seoTitle: 'Organize PDF Pages Online — Rotate, Reorder & Delete | docSpace',
     seoDescription: 'Visual page organizer for PDF files. Rearrange pages with drag and drop, rotate orientations, and remove unwanted pages with live previews.',
     steps: [
-      { title: 'Upload Document', desc: 'Choose your PDF to instantly render visual thumbnail cards.' },
+      { title: 'Upload Document', desc: 'Choose a PDF to see page thumbnails.' },
       { title: 'Organize Visually', desc: 'Drag thumbnails to reorder, click rotate (↻) to turn pages 90°, or click (×) to delete.' },
       { title: 'Save New PDF', desc: 'Click Organize PDF to generate your updated document in seconds.' }
     ],
@@ -106,7 +106,7 @@ export const tools = {
     steps: [
       { title: 'Select Images', desc: 'Upload JPG, JPEG, or PNG images from your device.' },
       { title: 'Sequence Images', desc: 'Rearrange image cards in the order you want them to appear in the PDF.' },
-      { title: 'Build Document', desc: 'Generate your multi-page PDF document and download instantly.' }
+      { title: 'Build Document', desc: 'Generate your multi-page PDF document and download it.' }
     ],
     features: [
       'Supports all standard JPEG and PNG formats.',
@@ -141,7 +141,7 @@ export const tools = {
     ],
     faqs: [
       { q: 'Which format should I choose: PNG or JPG?', a: 'Choose PNG for clean vector text, logos, and diagrams; choose JPG for photographs and complex scanned pages.' },
-      { q: 'Is there a limit on how many pages I can export?', a: 'Up to 50 pages can be exported per batch to guarantee high performance on device memory.' }
+      { q: 'Is there a limit on how many pages I can export?', a: 'Export up to 50 pages per batch.' }
     ]
   },
   compress: {
@@ -166,7 +166,7 @@ export const tools = {
       'No cloud processing: your sensitive legal and personal records remain strictly on your machine.'
     ],
     faqs: [
-      { q: 'Why did compression report no smaller file?', a: 'If your PDF is already heavily optimized, compressing further might increase size. docSpace guarantees it never delivers a larger file.' },
+      { q: 'Why did compression report no smaller file?', a: 'If your PDF is already heavily optimized, compressing further might increase size. The download is available when the result is smaller.' },
       { q: 'Does compression preserve selectable text?', a: 'Scanned compression re-encodes pages as optimized raster images, so interactive form fields and selectable text are omitted in this mode.' }
     ]
   },
@@ -186,12 +186,12 @@ export const tools = {
     steps: [
       { title: 'Select Word Document', desc: 'Pick your .docx file from your device.' },
       { title: 'Extract & Typeset', desc: 'docSpace parses XML paragraphs and renders crisp PDF pages locally.' },
-      { title: 'Download PDF', desc: 'Save your freshly created PDF document instantly.' }
+      { title: 'Download PDF', desc: 'Save the PDF.' }
     ],
     features: [
       'Pure client-side XML extraction: zero transmission of proprietary corporate or personal Word files.',
       'Automatic page budgeting and clean typography formatting.',
-      'Instant processing with zero wait times.'
+      'Conversion runs in your browser.'
     ],
     faqs: [
       { q: 'Does Word to PDF preserve images and tables?', a: 'This tool extracts clean text and paragraph structures. Complex tables and embedded images are omitted for reliable browser typesetting.' },
@@ -217,7 +217,7 @@ export const tools = {
     features: [
       'Generates fully editable Microsoft Word .docx files compatible with all modern office suites.',
       'Preserves multi-page structural page breaks and paragraph flows.',
-      '100% private: ideal for confidential contracts, NDAs, and manuscripts.'
+      'Document processing runs on your device.'
     ],
     faqs: [
       { q: 'Can this convert scanned images of text to Word?', a: 'The document must contain selectable text characters. Scanned image-only PDFs require OCR first.' },

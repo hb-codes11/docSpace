@@ -6,7 +6,7 @@ Prioritize everyday PDF tools with strong privacy. Success means a person can fi
 
 Ten tools cover merge, split, organize, image conversion, scan compression, text-based Word conversion, watermarks, and page numbers. PDF outputs can continue into another tool without a download and re-selection. Watermarks and numbers currently support unrotated pages. Watermark text uses Western European characters.
 
-Document content and filenames remain in browser memory. Optional accounts store preferences and usage counts. Ads and accounts are disabled in the hosted release until configured.
+Document content and filenames remain in browser memory. Optional accounts store preferences and usage counts. Account features require a Supabase project.
 
 ## Next releases, in order
 

@@ -3,21 +3,16 @@ import { createPagePicker } from './page-picker.js';
 import { MAX_BYTES } from './limits.js';
 import { tools } from './tools-data.js';
 import { renderToolLanding } from './components/landing.js';
-import { initAdSense, renderAdSlot, pushAds } from './components/ads.js';
 import { privacyPolicyContent, termsOfServiceContent, aboutContent } from './components/legal.js';
 import { getInitialRoute, syncUrlAndMetadata } from './router.js';
 
 import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
 import uploadIcon from 'lucide-static/icons/upload-cloud.svg?raw';
 import shieldIcon from 'lucide-static/icons/shield-check.svg?raw';
-import zapIcon from 'lucide-static/icons/zap.svg?raw';
-import lockIcon from 'lucide-static/icons/lock.svg?raw';
 
 const env = import.meta.env;
 const hasAccount = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
-// Initialize AdSense script if configured
-initAdSense();
 
 const initialTool = getInitialRoute();
 let mode = initialTool;
@@ -45,21 +40,15 @@ app.innerHTML = `
       <a href="#about" class="nav-link" id="nav-about">About</a>
     </nav>
     <div class="top-actions">
-      <span class="private" title="Files processed 100% locally in browser">${shieldIcon} On-device processing</span>
+      <span class="private">${shieldIcon} On-device processing</span>
       ${hasAccount ? '<button id="account" class="outline">Sign in</button>' : ''}
     </div>
   </div>
 </header>
 
 <section class="shell hero" id="tools-section">
-  <div class="hero-eyebrow">${zapIcon} ${Object.keys(tools).length} free tools — no uploads, no account</div>
   <h1>Your documents,<br><span class="hero-gradient-text">sorted.</span></h1>
-  <p>Everyday PDF &amp; Word tools. Everything runs privately on your device — files never leave your browser.</p>
-  <div class="hero-badges">
-    <span class="hero-badge">${shieldIcon} 100% on-device</span>
-    <span class="hero-badge">${lockIcon} No file uploads</span>
-    <span class="hero-badge">${zapIcon} Instant processing</span>
-  </div>
+  <p>Merge, organize, and convert documents in your browser.</p>
 </section>
 
 <main class="shell studio">
@@ -132,10 +121,6 @@ app.innerHTML = `
   </section>
 </main>
 
-<div class="shell" id="ad-slot-container">
-  ${renderAdSlot({ position: 'top' })}
-</div>
-
 <div class="shell" id="landing-content">
   ${renderToolLanding(tools[mode])}
 </div>
@@ -148,7 +133,7 @@ app.innerHTML = `
           <span class="brand-icon">${mergeIcon}</span>
           <span class="brand-name">docSpace</span>
         </a>
-        <p>A fast, 100% private, client-side web application for local PDF and Word workflows. Your confidential files never leave your device.</p>
+        <p>A personal project for everyday PDF and Word work.</p>
         <span class="private" style="display:inline-flex;">${shieldIcon} Files processed on your device</span>
       </div>
       <div class="footer-col">
@@ -174,7 +159,7 @@ app.innerHTML = `
         <ul class="footer-links">
           <li><a href="#privacy" class="footer-link" id="link-privacy">Privacy Policy</a></li>
           <li><a href="#terms" class="footer-link" id="link-terms">Terms of Service</a></li>
-          <li><a href="#about" class="footer-link" id="link-about">About Architecture</a></li>
+          <li><a href="#about" class="footer-link" id="link-about">About</a></li>
         </ul>
       </div>
     </div>
@@ -276,7 +261,6 @@ function chooseTool(value, navigate = true) {
   syncUrlAndMetadata(mode, navigate);
   render();
   updateLandingContent();
-  pushAds();
 }
 
 function updateLandingContent() {

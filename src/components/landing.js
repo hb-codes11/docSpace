@@ -1,9 +1,3 @@
-// src/components/landing.js - Dynamic SEO Landing page sections for each tool
-
-import checkIcon from 'lucide-static/icons/check.svg?raw';
-import zapIcon from 'lucide-static/icons/zap.svg?raw';
-import shieldIcon from 'lucide-static/icons/shield-check.svg?raw';
-import lockIcon from 'lucide-static/icons/lock.svg?raw';
 import { tools } from '../tools-data.js';
 
 export function renderToolLanding(tool) {
@@ -13,7 +7,7 @@ export function renderToolLanding(tool) {
     <section class="landing-section" aria-label="Tool Information and Guides">
       <!-- 3-Step How-To Guide -->
       <div class="landing-block">
-        <h3 class="section-title">How to ${tool.title} in 3 Simple Steps</h3>
+        <h3 class="section-title">Using ${tool.title}</h3>
         <div class="steps-grid">
           ${tool.steps.map((step, idx) => `
             <div class="step-card">
@@ -49,7 +43,7 @@ export function renderToolLanding(tool) {
 
       <!-- Related Tools Grid -->
       <div class="landing-block">
-        <h3 class="section-title">Explore More PDF Tools</h3>
+        <h3 class="section-title">Other PDF tools</h3>
         <div class="related-grid">
           ${otherTools.map(item => `
             <a href="/#/${item.slug}" class="related-card" data-switch-tool="${item.id}">

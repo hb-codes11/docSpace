@@ -6,3 +6,4 @@ dist/
 ._*
 test-results/
 playwright-report/
+/.openai/
