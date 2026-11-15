@@ -8,7 +8,9 @@
 
 ## What makes docSpace useful
 
-- **Your files stay on your device.** The ten tools work in the browser and are available without signing in.
+- **Your files stay on your device.** The tools work in the browser and are available without signing in.
+- **Scan from your phone.** Capture pages with the rear camera or choose photos, review their order, and create an A4 PDF.
+- **Name each download.** Enter a filename in **Save as**. The app keeps the correct extension for PDF, DOCX, and ZIP results.
 - **Work with pages visually.** Select thumbnails, drag pages into order, or enter a range like `1-3, 7`.
 - **Pick up where the last tool finished.** **Continue with this PDF** carries the output into another tool. The workspace adapts to desktop and mobile.
 
@@ -18,6 +20,7 @@
 
 | Tool | What it does |
 | --- | --- |
+| Document scanner | Creates a multipage A4 PDF from camera photos or browser-readable images. Grayscale is optional. |
 | Merge PDFs | Combines multiple PDFs in the order you choose. |
 | Split PDF | Extracts a range into one PDF or exports one PDF per selected page in a ZIP. |
 | Organize PDF | Reorders, rotates, and removes pages with a thumbnail preview. |
@@ -67,6 +70,14 @@ The browser suite runs against the production build. It verifies downloaded file
 
 The core tools send no document bytes or filenames to Supabase. Closing or refreshing a tab clears the current workspace.
 
+## Install on your phone
+
+Open the HTTPS site on your phone. On **Android Chrome**, tap **Install app** in docSpace or use Chrome's menu. On **iPhone or iPad**, open the site in **Safari**, tap **Share** and choose **Add to Home Screen**. Turn on **Open as Web App** if Safari shows that option.
+
+Visit once online to cache the app. Local tools can then open offline after caching completes. Sign-in and account sync require a connection. The app caches its code, styles, and icons. Scanned pages and other documents stay in memory until you save them.
+
+Use **Color theme** to follow your device setting or choose Light or Dark. **Share or save** appears on browsers that support sharing the generated file to system apps such as Files.
+
 ## Deploy to Netlify
 
 1. In Netlify, import [`hb-codes11/docSpace`](https://github.com/hb-codes11/docSpace) and select the `main` branch.
@@ -78,7 +89,7 @@ For Vercel, import the same repository as a Vite project. The included [`vercel.
 
 ### Optional accounts
 
-1. Apply every SQL file in [`supabase/migrations/`](supabase/migrations/) in filename order. This sets up preferences, profiles, usage counts, and the tool catalog constraints.
+1. Apply every SQL file in [`supabase/migrations/`](supabase/migrations/) in filename order. This sets up preferences, profiles, usage counts, and the tool catalog constraints. If you already applied the first five migrations, apply only [the scanner migration](supabase/migrations/20261115000000_document_scanner.sql) before enabling accounts on this release.
 2. In Supabase Auth, set the deployment URL as the Site URL and allow the exact sign-in return URLs, including `http://localhost:5173/` for local testing.
 3. Copy [`.env.example`](.env.example) to `.env.local` for local development. On your host, set the same variables before building.
 

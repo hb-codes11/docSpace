@@ -4,7 +4,7 @@ Prioritize everyday PDF tools with strong privacy. Success means a person can fi
 
 ## Current release
 
-Ten tools cover merge, split, organize, image conversion, scan compression, text-based Word conversion, watermarks, and page numbers. PDF outputs can continue into another tool without a download and re-selection. Watermarks and numbers currently support unrotated pages. Watermark text uses Western European characters.
+Eleven tools cover mobile scanning, merge, split, organize, image conversion, scan compression, text-based Word conversion, watermarks, and page numbers. PDF outputs can continue into another tool without a download and re-selection. Watermarks and numbers currently support unrotated pages. Watermark text uses Western European characters.
 
 Document content and filenames remain in browser memory. Optional accounts store preferences and usage counts. Account features require a Supabase project.
 
@@ -29,7 +29,7 @@ Document content and filenames remain in browser memory. Optional accounts store
    - Compression presets with visual quality and size comparisons.
 
 4. Installation and launch
-   - Installable PWA with versioned application caching and offline verification.
+   - Verify installation, camera capture, and the native share sheet on physical Android and iOS devices.
    - Public hosting and custom domain when requested.
    - Connected Supabase auth verified with two independent users and row-access checks.
    - Privacy-focused diagnostics that exclude files, filenames, and document text.

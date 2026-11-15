@@ -10,7 +10,21 @@ import wordIcon from 'lucide-static/icons/file-text.svg?raw';
 import stampIcon from 'lucide-static/icons/stamp.svg?raw';
 import numbersIcon from 'lucide-static/icons/list-ordered.svg?raw';
 
+import scanIcon from 'lucide-static/icons/scan-line.svg?raw';
+
 export const tools = {
+  scan: {
+    id: 'scan', slug: 'scan-document', title: 'Document scanner', actionText: 'Create scanned PDF',
+    summary: 'Capture pages with your camera', icon: scanIcon, kind: 'photos',
+    accept: 'image/*', multiple: true,
+    hint: 'Take a photo of each page or choose existing photos. Arrange them and save an A4 PDF.',
+    steps: [
+      { title: 'Capture each page', desc: 'Place the document on a flat surface and fill the camera frame.' },
+      { title: 'Review the page order', desc: 'Use the arrows to arrange your photos. Choose grayscale if you prefer.' },
+      { title: 'Save your scan', desc: 'Enter a filename and save the PDF.' }
+    ],
+    faqs: [{ q: 'Can I select text in my scan?', a: 'Scans contain page images. Text recognition requires an OCR tool.' }]
+  },
   merge: {
     id: 'merge',
     slug: 'merge-pdf',

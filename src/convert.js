@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 
-export async function imagesToPdf(files) {
+export async function imagesToPdf(files, { fitA4 = false } = {}) {
   const pdf = await PDFDocument.create();
   for (const file of files) {
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -12,9 +12,13 @@ export async function imagesToPdf(files) {
     } catch {
       throw new Error('Choose valid JPG or PNG images.');
     }
-    const scale = Math.min(1, 1200 / Math.max(image.width, image.height));
+    const [pageWidth, pageHeight] = image.width > image.height ? [842, 595] : [595, 842];
+    const scale = fitA4
+      ? Math.min((pageWidth - 36) / image.width, (pageHeight - 36) / image.height)
+      : Math.min(1, 1200 / Math.max(image.width, image.height));
     const { width, height } = image.scale(scale);
-    pdf.addPage([width, height]).drawImage(image, { x: 0, y: 0, width, height });
+    const page = pdf.addPage(fitA4 ? [pageWidth, pageHeight] : [width, height]);
+    page.drawImage(image, { x: (page.getWidth() - width) / 2, y: (page.getHeight() - height) / 2, width, height });
   }
   return pdf.save();
 }

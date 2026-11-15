@@ -5,13 +5,14 @@ import { tools } from './tools-data.js';
 import { renderToolLanding } from './components/landing.js';
 import { privacyPolicyContent, termsOfServiceContent, aboutContent } from './components/legal.js';
 import { getInitialRoute, syncUrlAndMetadata } from './router.js';
+import { outputFilename } from './filenames.js';
+import { bindTheme, bindInstall } from './app-settings.js';
 import { initTechText } from './components/TechText.js';
 
 import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
 import uploadIcon from 'lucide-static/icons/upload-cloud.svg?raw';
 import shieldIcon from 'lucide-static/icons/shield-check.svg?raw';
-import zapIcon from 'lucide-static/icons/zap.svg?raw';
-import lockIcon from 'lucide-static/icons/lock.svg?raw';
+import cameraIcon from 'lucide-static/icons/camera.svg?raw';
 
 const env = import.meta.env;
 const hasAccount = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
@@ -23,7 +24,8 @@ let files = [];
 let job;
 let timer;
 let objectUrl;
-let resultFile;
+let result;
+const scanPreviews = new Map();
 let account;
 let session;
 let userSelectedTool = false;
@@ -43,21 +45,21 @@ app.innerHTML = `
       <a href="#about" class="nav-link" id="nav-about">About</a>
     </nav>
     <div class="top-actions">
-      <span class="private">${shieldIcon} On-device processing</span>
+      <select id="theme" aria-label="Color theme">
+        <option value="system">System theme</option>
+        <option value="light">Light theme</option>
+        <option value="dark">Dark theme</option>
+      </select>
+      <button id="install" class="outline" type="button">Install app</button>
       ${hasAccount ? '<button id="account" class="outline">Sign in</button>' : ''}
     </div>
   </div>
 </header>
 
 <section class="shell hero" id="tools-section">
-  <div class="hero-eyebrow">${zapIcon} ${Object.keys(tools).length} free tools — no uploads, no account</div>
-  <div id="hero-tech-wordmark" class="hero-tech-container"></div>
-  <p>Merge, organize, stamp, and convert documents directly in your browser. Files never leave your device.</p>
-  <div class="hero-badges">
-    <span class="hero-badge">${shieldIcon} 100% on-device</span>
-    <span class="hero-badge">${lockIcon} No file uploads</span>
-    <span class="hero-badge">${zapIcon} Instant processing</span>
-  </div>
+  <h1 class="sr-only">docSpace</h1>
+  <div id="hero-tech-wordmark" class="hero-tech-container" aria-hidden="true"></div>
+  <p>Scan, organize, and convert documents on your device.</p>
 </section>
 
 <main class="shell studio">
@@ -83,11 +85,16 @@ app.innerHTML = `
       <span class="upload-icon">${uploadIcon}</span>
       <strong id="drop-title">Drop PDF files here</strong>
       <span class="limit">Up to 100 MB and 500 pages per job</span>
-      <button class="primary" id="browse" type="button">Choose PDFs</button>
+      <div class="file-actions">
+        <button class="primary" id="take-photo" type="button" hidden>${cameraIcon} Take photo</button>
+        <button class="primary" id="browse" type="button">Choose PDFs</button>
+      </div>
+      <input type="file" id="camera-picker" accept="image/*" capture="environment" hidden>
       <input type="file" id="picker" accept=".pdf,application/pdf" hidden>
     </div>
 
     <ol id="queue" aria-label="Selected files" hidden></ol>
+    <label id="scan-options" class="check" hidden><input id="grayscale" type="checkbox"> Grayscale</label>
 
     <div id="split-options" hidden>
       <label for="pages">Pages to keep</label>
@@ -120,7 +127,17 @@ app.innerHTML = `
       <button class="outline" id="reload-tool" hidden>Reload docSpace</button>
       <button class="primary" id="process" hidden></button>
       <button class="outline" id="cancel" hidden>Cancel</button>
-      <a class="primary" id="download" hidden>Download</a>
+      <div id="save-options" hidden>
+        <label for="output-name">Save as</label>
+        <div class="save-actions">
+          <div class="name-field">
+            <input id="output-name" type="text" maxlength="120" spellcheck="false" autocapitalize="none" autocomplete="off" aria-describedby="output-extension">
+            <span id="output-extension"></span>
+          </div>
+          <a class="primary" id="download">Download</a>
+          <button class="outline" id="share-file" type="button" hidden>Share or save</button>
+        </div>
+      </div>
       <div id="continue-options" hidden>
         <label for="next-tool">Continue with this PDF</label>
         <select id="next-tool">${Object.values(tools).filter(tool => !tool.kind && tool.id !== 'merge').map(tool => `<option value="${tool.id}">${tool.title}</option>`).join('')}</select>
@@ -193,6 +210,13 @@ app.innerHTML = `
   </form>
 </dialog>
 
+<dialog id="install-dialog" aria-labelledby="install-title">
+  <h2 id="install-title">Install docSpace</h2>
+  <p><strong>Android:</strong> In Chrome, open the menu and choose Install app or Add to Home screen.</p>
+  <p><strong>iPhone and iPad:</strong> In Safari, tap Share, then Add to Home Screen. Turn on Open as Web App if shown.</p>
+  <form method="dialog" class="dialog-actions"><button class="primary">Done</button></form>
+</dialog>
+
 <dialog id="legal-dialog">
   <div id="legal-body"></div>
   <div class="dialog-actions">
@@ -205,6 +229,7 @@ const $ = id => document.getElementById(id);
 const picker = $('picker');
 const status = $('status');
 const download = $('download');
+const outputName = $('output-name');
 const queue = $('queue');
 const legalDialog = $('legal-dialog');
 const legalBody = $('legal-body');
@@ -244,10 +269,10 @@ function updateProcessButton() {
 function clearResult() {
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
-  resultFile = undefined;
+  result = undefined;
+  $('save-options').hidden = true;
   $('continue-options').hidden = true;
   download.removeAttribute('href');
-  download.hidden = true;
   $('reload-tool').hidden = true;
   status.textContent = '';
   status.classList.remove('error');
@@ -313,9 +338,14 @@ function render(focusIndex, action) {
   picker.accept = tool.accept ?? '.pdf,application/pdf';
   const kind = tool.kind ?? (tool.multiple ? 'PDFs' : 'PDF');
   $('browse').textContent = 'Choose ' + kind;
-  $('drop-title').textContent = 'Drop ' + kind + ' here';
+  $('drop-title').textContent = mode === 'scan' ? 'Add a photo for each page' : 'Drop ' + kind + ' here';
   $('browse').disabled = Boolean(job);
-  $('process').textContent = mode === 'word' ? 'Export editable text' : tool.title;
+  $('browse').className = mode === 'scan' ? 'outline' : 'primary';
+  $('take-photo').hidden = mode !== 'scan';
+  $('take-photo').disabled = Boolean(job);
+  $('scan-options').hidden = mode !== 'scan' || !files.length;
+  $('grayscale').disabled = Boolean(job);
+  $('process').textContent = tool.actionText ?? (mode === 'word' ? 'Export editable text' : tool.title);
   $('process').hidden = !files.length || Boolean(job);
   updateProcessButton();
   $('cancel').hidden = !job;
@@ -336,12 +366,26 @@ function render(focusIndex, action) {
 
   queue.hidden = !files.length;
   queue.replaceChildren();
+  for (const [file, url] of scanPreviews) {
+    if (mode === 'scan' && files.includes(file)) continue;
+    URL.revokeObjectURL(url);
+    scanPreviews.delete(file);
+  }
 
   files.forEach((file, index) => {
     const row = document.createElement('li');
     const name = document.createElement('span');
     name.className = 'filename';
     name.textContent = file.name;
+    if (mode === 'scan') {
+      if (!scanPreviews.has(file)) scanPreviews.set(file, URL.createObjectURL(file));
+      const preview = document.createElement('img');
+      preview.className = 'scan-thumbnail';
+      preview.alt = '';
+      preview.loading = 'lazy';
+      preview.src = scanPreviews.get(file);
+      row.append(preview);
+    }
     row.append(name);
     const actions = document.createElement('div');
     actions.className = 'actions';
@@ -430,17 +474,19 @@ function finish(data) {
     (data.reload ? $('reload-tool') : $('process')).focus();
     return;
   }
+  result = data;
   objectUrl = URL.createObjectURL(data.blob);
   download.href = objectUrl;
-  download.download = data.filename;
-  download.textContent = 'Download ' + data.filename;
-  download.hidden = false;
-  if (data.blob.type === 'application/pdf') {
-    resultFile = new File([data.blob], data.filename, { type: 'application/pdf' });
-    $('continue-options').hidden = false;
-  }
+  const dot = data.filename.lastIndexOf('.');
+  outputName.value = data.filename.slice(0, dot);
+  $('output-extension').textContent = data.filename.slice(dot);
+  syncOutputName();
+  $('save-options').hidden = false;
+  $('continue-options').hidden = data.blob.type !== 'application/pdf';
+  $('share-file').hidden = !navigator.canShare?.({ files: [namedResult()] });
   report('Your download is ready.');
-  download.focus();
+  outputName.focus();
+  outputName.select();
 
   // If user is logged in, asynchronously record tool usage in Supabase with RLS
   if (session && account) {
@@ -448,10 +494,34 @@ function finish(data) {
   }
 }
 
+function syncOutputName() {
+  if (!result) return;
+  const name = outputFilename(outputName.value, result.filename);
+  download.download = name;
+  download.textContent = 'Download';
+  download.setAttribute('aria-label', 'Download ' + name);
+}
+
+function namedResult() {
+  return new File([result.blob], download.download, { type: result.blob.type });
+}
+outputName.oninput = syncOutputName;
+outputName.onkeydown = event => {
+  if (event.key === 'Enter' && result) {
+    event.preventDefault();
+    download.click();
+  }
+};
+$('share-file').onclick = async () => {
+  if (!result) return;
+  try { await navigator.share({ files: [namedResult()] }); } catch (error) {
+    if (error.name !== 'AbortError') report('Could not share this file. Use Download to save it.', true);
+  }
+};
 $('watermark-text').oninput = $('number-start').oninput = clearResult;
 $('continue-tool').onclick = () => {
-  if (!resultFile || job) return;
-  const file = resultFile;
+  if (result?.blob.type !== 'application/pdf' || job) return;
+  const file = namedResult();
   chooseTool($('next-tool').value);
   files = [];
   addFiles([file]);
@@ -459,6 +529,12 @@ $('continue-tool').onclick = () => {
 };
 $('reload-tool').onclick = () => location.reload();
 $('browse').onclick = () => picker.click();
+$('take-photo').onclick = () => $('camera-picker').click();
+$('camera-picker').onchange = event => {
+  if (mode === 'scan') addFiles([...event.target.files]);
+  event.target.value = '';
+};
+$('grayscale').onchange = clearResult;
 picker.onchange = () => {
   addFiles([...picker.files]);
   picker.value = '';
@@ -497,6 +573,12 @@ function startWorker(data) {
 
 async function runJob(current, data, signal) {
   const { mode, files, selection, imageFormat } = data;
+  if (mode === 'scan') {
+    const { prepareScanPages } = await import('./scan.js');
+    const pages = await prepareScanPages(files, data.grayscale, signal);
+    if (job === current) startWorker({ ...data, files: pages });
+    return;
+  }
   if (!['word', 'export', 'compress', 'docx'].includes(mode)) {
     startWorker(data);
     return;
@@ -534,6 +616,7 @@ $('process').onclick = () => {
     separate: $('separate').checked,
     pageEdits: pagePicker.getEdits(),
     imageFormat: $('image-format').value,
+    grayscale: $('grayscale').checked,
     stampOptions: { text: $('watermark-text').value, start: $('number-start').value },
   };
   runJob(current, data, controller.signal).catch(error => {
@@ -631,7 +714,7 @@ syncUrlAndMetadata(mode);
 // Initialize React Bits TechText component
 const techContainer = document.getElementById('hero-tech-wordmark');
 if (techContainer) {
-  initTechText(techContainer, {
+  const wordmark = initTechText(techContainer, {
     text: 'docSpace',
     fontWeight: 850,
     fontSize: window.innerWidth < 640 ? 56 : 82,
@@ -649,7 +732,10 @@ if (techContainer) {
     labels: true,
     specks: 12,
   });
+  bindTheme($('theme'), dark => wordmark.update({ color: dark ? '#f4efff' : '#181528', accentColor: dark ? '#c4a7ff' : '#7c3aed' }));
 }
+$('install-dialog').addEventListener('close', () => $('install').focus());
+bindInstall($('install'), $('install-dialog'));
 
 if (hasAccount) initAccount().catch(() => {
   $('account').disabled = true;

@@ -17,13 +17,16 @@ async function result(page, name) {
   const link = page.getByRole('link', { name: 'Download ' + name });
   await expect(link).toBeVisible({ timeout: 20000 });
   const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+  expect(download.suggestedFilename()).toBe(name);
   return readFile(await download.path());
 }
 
 test('merge honors file order without sending documents', async ({ page }) => {
   const unexpected = [];
   page.on('request', request => {
-    if (!request.url().startsWith('http://127.0.0.1:4173/') || request.method() !== 'GET') unexpected.push(request.url());
+    const url = new URL(request.url());
+    if (url.protocol === 'blob:') return;
+    if (url.origin !== 'http://127.0.0.1:4173' || request.method() !== 'GET') unexpected.push(request.url());
   });
   await page.goto('/');
   await page.locator('#picker').setInputFiles([await fixture('first.pdf', [210]), await fixture('second.pdf', [310])]);
@@ -39,6 +42,7 @@ test('extracts a range and exports a split ZIP on mobile', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Split PDF/ }).click();
   await page.locator('#picker').setInputFiles(await fixture('pages.pdf', [210, 220, 230]));
+  await expect(page.getByRole('button', { name: 'Page 3', exact: true })).toBeVisible();
   await page.getByLabel('Pages to keep').fill('3, 1');
   await page.locator('#process').click();
   const pdf = await PDFDocument.load(await result(page, 'extracted.pdf'));
@@ -136,20 +140,24 @@ test('tool links survive reload and browser back on static hosting', async ({ pa
   await expect(page.locator('.ad-container')).toHaveCount(0);
 });
 
-test('offers a reload when the image export module is unavailable', async ({ page }) => {
-  await page.route('**/assets/pdf-images-*.js', route => route.fulfill({ status: 404 }));
-  await page.goto('/#/pdf-to-images');
-  await page.locator('#picker').setInputFiles(await fixture('pages.pdf', [210]));
-  await page.locator('#process').click();
-  await expect(page.locator('#status')).toContainText('Reload docSpace, then select your file again.');
-  const reload = page.getByRole('button', { name: 'Reload docSpace' });
-  await expect(reload).toBeFocused();
-  await page.unroute('**/assets/pdf-images-*.js');
-  await reload.click();
-  await expect(page.locator('#tool-title')).toHaveText('PDF to images');
-  await page.locator('#picker').setInputFiles(await fixture('pages.pdf', [210]));
-  await page.locator('#process').click();
-  await result(page, 'page-images.zip');
+test.describe('missing asset recovery', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('offers a reload when the image export module is unavailable', async ({ page }) => {
+    await page.route('**/assets/pdf-images-*.js', route => route.fulfill({ status: 404 }));
+    await page.goto('/#/pdf-to-images');
+    await page.locator('#picker').setInputFiles(await fixture('pages.pdf', [210]));
+    await page.locator('#process').click();
+    await expect(page.locator('#status')).toContainText('Reload docSpace, then select your file again.');
+    const reload = page.getByRole('button', { name: 'Reload docSpace' });
+    await expect(reload).toBeFocused();
+    await page.unroute('**/assets/pdf-images-*.js');
+    await reload.click();
+    await expect(page.locator('#tool-title')).toHaveText('PDF to images');
+    await page.locator('#picker').setInputFiles(await fixture('pages.pdf', [210]));
+    await page.locator('#process').click();
+    await result(page, 'page-images.zip');
+  });
 });
 
 test('adds watermark and numbering through a continuous PDF workflow', async ({ page }) => {
@@ -173,4 +181,41 @@ test('adds watermark and numbering through a continuous PDF workflow', async ({ 
   expect(xml).toContain('Original text');
   expect(xml).toMatch(/>7</);
   expect(xml).toMatch(/>8</);
+});
+
+test('scans two photos offline and downloads a named PDF on a phone layout', async ({ page, context }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/');
+  const manifestResponse = await page.request.get('/manifest.webmanifest');
+  const manifest = await manifestResponse.json();
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.icons.map(icon => icon.sizes)).toContain('512x512');
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  await context.setOffline(true);
+  await page.goto('/#/scan-document');
+  await page.reload();
+  await expect(page.locator('#tool-title')).toHaveText('Document scanner');
+  await expect(page.locator('#camera-picker')).toHaveAttribute('capture', 'environment');
+
+  const image = await readFile(new URL('../public/icons/icon-192.png', import.meta.url));
+  await page.locator('#camera-picker').setInputFiles({ name: 'camera.png', mimeType: 'image/png', buffer: image });
+  await page.locator('#picker').setInputFiles({ name: 'gallery.png', mimeType: 'image/png', buffer: image });
+  await expect(page.locator('.scan-thumbnail')).toHaveCount(2);
+  await page.getByLabel('Grayscale').check();
+  await page.getByRole('button', { name: 'Create scanned PDF' }).click();
+  await page.getByLabel('Save as').fill('Lecture notes.pdf');
+  const pdf = await PDFDocument.load(await result(page, 'Lecture notes.pdf'));
+  expect(pdf.getPages().map(p => p.getSize())).toEqual([{ width: 595, height: 842 }, { width: 595, height: 842 }]);
+});
+
+test('follows the device theme and remembers a manual selection', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByLabel('Color theme').selectOption('light');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByLabel('Color theme').selectOption('system');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });

@@ -1112,3 +1112,115 @@ dialog label { display: block; margin: 16px 0 6px; font-weight: 700; font-size: 
 @media (max-width: 600px) {
   #continue-options select { flex: 1; max-width: 100%; }
 }
+
+/* Mobile controls, scanner and downloads */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.top-inner { padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+.footer { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+
+#theme, #output-name {
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+#theme { min-height: 44px; }
+.file-actions, .save-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.file-actions svg { width: 18px; height: 18px; }
+#scan-options { margin: 14px 0; min-height: 44px; }
+.scan-thumbnail {
+  flex: none;
+  width: 46px;
+  height: 58px;
+  object-fit: contain;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+}
+#save-options { flex: 1 1 100%; display: grid; gap: 8px; }
+#save-options label { font-weight: 700; }
+.save-actions { justify-content: flex-start; align-items: stretch; }
+.name-field { flex: 1 1 240px; min-width: 0; display: flex; align-items: center; gap: 8px; }
+#output-name { min-width: 0; width: 100%; }
+#output-extension { color: var(--muted); }
+#install-dialog p + p { margin-top: 12px; }
+
+@media (pointer: coarse) {
+  .primary, .outline, .icon-button { min-height: 44px; }
+  .icon-button { min-width: 44px; padding-inline: 8px; }
+  .page-actions .icon-button { min-width: 26px; padding-inline: 3px; }
+  input, select { font-size: 16px !important; }
+}
+@media (max-width: 600px) {
+  .top-inner { flex-wrap: wrap; gap: 8px; padding-block: 8px; }
+  .top-actions { gap: 6px; flex-wrap: wrap; }
+  #theme, #install { padding-inline: 8px; }
+  #save-options .name-field { flex-basis: 100%; }
+  .save-actions #download, .save-actions #share-file { flex: 1 1 auto; }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f3edf9;
+  --muted: #c5bbd4;
+  --muted-light: #a99bbd;
+  --surface-soft: #171322;
+  --paper: #211a30;
+  --rail-bg: rgba(42, 32, 62, .9);
+  --line: #413551;
+  --line-strong: #685781;
+  --accent: #c6a8ff;
+  --accent-hover: #decaff;
+  --accent-light: #372951;
+  --accent-mid: #9b78d8;
+  --accent-gradient: linear-gradient(135deg, #7140be, #5140a8);
+  --danger: #ff9d9d;
+  --shadow-accent: 0 6px 24px rgba(0, 0, 0, .3);
+}
+[data-theme="dark"] .top { background: rgba(25, 19, 35, .96); box-shadow: none; }
+[data-theme="dark"] .brand-name { background: none; -webkit-text-fill-color: var(--ink); }
+[data-theme="dark"] .studio { background: var(--paper); box-shadow: var(--shadow-md); }
+[data-theme="dark"] .tool, [data-theme="dark"] .rail-note { color: var(--ink); }
+[data-theme="dark"] .tool-icon, [data-theme="dark"] .rail-note { background: var(--surface-soft); }
+[data-theme="dark"] .tool:hover:not(:disabled), [data-theme="dark"] .tool[aria-pressed="true"] {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+[data-theme="dark"] .drop,
+[data-theme="dark"] #split-options,
+[data-theme="dark"] #image-options,
+[data-theme="dark"] #stamp-options,
+[data-theme="dark"] #page-grid,
+[data-theme="dark"] .step-card,
+[data-theme="dark"] .faq-item,
+[data-theme="dark"] .related-card {
+  background: var(--surface-soft);
+}
+[data-theme="dark"] .drop:hover,
+[data-theme="dark"] .drop.dragging,
+[data-theme="dark"] .outline:hover:not(:disabled),
+[data-theme="dark"] .icon-button:enabled:hover,
+[data-theme="dark"] #queue li:hover,
+[data-theme="dark"] .related-card:hover { background: var(--accent-light); }
+[data-theme="dark"] #page-grid li,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] #stamp-options input,
+[data-theme="dark"] #image-format,
+[data-theme="dark"] #continue-options select {
+  background: var(--paper);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+[data-theme="dark"] .private { color: #a2ddb5; background: #193327; border-color: #315b45; }

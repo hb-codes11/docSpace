@@ -7,10 +7,10 @@ self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, l
     if (files.reduce((size, file) => size + file.size, 0) > MAX_BYTES) {
       throw new Error('Choose files totaling 100 MB or less.');
     }
-    if (mode === 'images' || mode === 'docx') {
+    if (['images', 'scan', 'docx'].includes(mode)) {
       const { imagesToPdf, textToPdf } = await import('./convert.js');
-      const bytes = mode === 'images' ? await imagesToPdf(files) : await textToPdf(lines);
-      self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: mode === 'images' ? 'images.pdf' : 'document.pdf' });
+      const bytes = mode === 'docx' ? await textToPdf(lines) : await imagesToPdf(files, { fitA4: mode === 'scan' });
+      self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: ({ scan: 'scan.pdf', images: 'images.pdf', docx: 'document.pdf' })[mode] });
       return;
     }
     const groups = [];
