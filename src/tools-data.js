@@ -17,10 +17,10 @@ export const tools = {
     id: 'scan', slug: 'scan-document', title: 'Document scanner', actionText: 'Create scanned PDF',
     summary: 'Capture pages with your camera', icon: scanIcon, kind: 'photos',
     accept: 'image/*', multiple: true,
-    hint: 'Take a photo of each page or choose existing photos. Arrange them and save an A4 PDF.',
+    hint: 'Take photos or choose existing images. Crop, straighten, and rotate each page before saving an A4 PDF.',
     steps: [
       { title: 'Capture each page', desc: 'Place the document on a flat surface and fill the camera frame.' },
-      { title: 'Review the page order', desc: 'Use the arrows to arrange your photos. Choose grayscale if you prefer.' },
+      { title: 'Review the page order', desc: 'Use Edit to adjust the corners and preview each page. Use the arrows to change page order.' },
       { title: 'Save your scan', desc: 'Enter a filename and save the PDF.' }
     ],
     faqs: [{ q: 'Can I select text in my scan?', a: 'Scans contain page images. Text recognition requires an OCR tool.' }]

@@ -219,3 +219,45 @@ test('follows the device theme and remembers a manual selection', async ({ page 
   await page.getByLabel('Color theme').selectOption('system');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
+
+test('crops and rotates a scanner page before PDF export', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/#/scan-document');
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#cc3044';
+    ctx.fillRect(0, 0, 400, 600);
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    for (const [x, y] of [[80, 90], [325, 72], [360, 534], [48, 543]]) ctx.lineTo(x, y);
+    ctx.fill();
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  await page.locator('#picker').setInputFiles({ name: 'angled-page.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await page.getByRole('button', { name: 'Edit page 1' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Crop and straighten' });
+  for (const [name, direction, times] of [
+    ['Top left corner', 'Right', 5], ['Top left corner', 'Down', 4],
+    ['Top right corner', 'Left', 5], ['Top right corner', 'Down', 4],
+    ['Bottom right corner', 'Left', 3], ['Bottom right corner', 'Up', 3],
+    ['Bottom left corner', 'Right', 4], ['Bottom left corner', 'Up', 3],
+  ]) {
+    const corner = dialog.getByRole('button', { name });
+    for (let i = 0; i < times; i++) await corner.press('Shift+Arrow' + direction);
+  }
+  await dialog.getByRole('button', { name: 'Rotate 90°' }).click();
+  const preview = dialog.locator('canvas');
+  await expect(preview).toBeVisible();
+  const shape = await preview.evaluate(canvas => ({ width: canvas.width, height: canvas.height }));
+  expect(shape.width).toBeGreaterThan(shape.height);
+  expect(shape.height).toBeLessThan(250);
+  const pixel = await preview.evaluate(canvas => [...canvas.getContext('2d').getImageData(2, 2, 1, 1).data]);
+  expect(pixel).toEqual([255, 255, 255, 255]);
+  await dialog.getByRole('button', { name: 'Apply edits' }).click();
+  await page.getByRole('button', { name: 'Create scanned PDF' }).click();
+  const pdf = await PDFDocument.load(await result(page, 'scan.pdf'));
+  expect(pdf.getPages().map(p => p.getSize())).toEqual([{ width: 842, height: 595 }]);
+});

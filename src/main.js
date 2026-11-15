@@ -26,6 +26,7 @@ let timer;
 let objectUrl;
 let result;
 const scanPreviews = new Map();
+const scanEdits = new Map();
 let account;
 let session;
 let userSelectedTool = false;
@@ -210,6 +211,30 @@ app.innerHTML = `
   </form>
 </dialog>
 
+<dialog id="scan-editor" aria-labelledby="scan-editor-title">
+  <h2 id="scan-editor-title">Crop and straighten</h2>
+  <p>Drag the four corners to the edges of the document. You can also focus a corner and use the arrow keys.</p>
+  <div class="scan-stage" hidden>
+    <img class="scan-source" alt="Original scan photo" draggable="false">
+    <span class="scan-outline" aria-hidden="true"></span>
+    <button class="scan-corner" aria-label="Top left corner" type="button"></button>
+    <button class="scan-corner" aria-label="Top right corner" type="button"></button>
+    <button class="scan-corner" aria-label="Bottom right corner" type="button"></button>
+    <button class="scan-corner" aria-label="Bottom left corner" type="button"></button>
+  </div>
+  <div class="scan-result-preview" aria-label="Straightened page preview" hidden></div>
+  <p id="scan-editor-status" role="status"></p>
+  <div class="scan-editor-controls">
+    <button id="scan-preview-toggle" class="outline" type="button">Preview</button>
+    <button id="scan-rotate" class="outline" type="button">Rotate 90°</button>
+    <button id="scan-reset" class="outline" type="button">Reset</button>
+  </div>
+  <div class="dialog-actions">
+    <form method="dialog"><button class="outline" autofocus>Cancel</button></form>
+    <button id="scan-edit-save" class="primary" type="button">Apply edits</button>
+  </div>
+</dialog>
+
 <dialog id="install-dialog" aria-labelledby="install-title">
   <h2 id="install-title">Install docSpace</h2>
   <p><strong>Android:</strong> In Chrome, open the menu and choose Install app or Add to Home screen.</p>
@@ -370,6 +395,7 @@ function render(focusIndex, action) {
     if (mode === 'scan' && files.includes(file)) continue;
     URL.revokeObjectURL(url);
     scanPreviews.delete(file);
+    scanEdits.delete(file);
   }
 
   files.forEach((file, index) => {
@@ -407,6 +433,32 @@ function render(focusIndex, action) {
         clearResult();
         render(index);
       };
+    }
+
+    if (mode === 'scan') {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'outline scan-edit-button';
+      edit.textContent = 'Edit';
+      edit.setAttribute('aria-label', 'Edit page ' + (index + 1));
+      edit.disabled = Boolean(job);
+      edit.onclick = async () => {
+        try {
+          const { editScanPage } = await import('./scan-editor.js');
+          const dialog = $('scan-editor');
+          if (mode !== 'scan' || job || !files.includes(file) || dialog.open) return;
+          await editScanPage(dialog, scanPreviews.get(file), scanEdits.get(file), $('grayscale').checked, edited => {
+            scanEdits.set(file, edited);
+            clearResult();
+            edit.textContent = edited.corners || edited.rotation ? 'Edited' : 'Edit';
+          });
+        } catch {
+          report('The scan editor could not load. Reload docSpace and try again.', true);
+        }
+      };
+      const saved = scanEdits.get(file);
+      if (saved?.corners || saved?.rotation) edit.textContent = 'Edited';
+      actions.append(edit);
     }
 
     const buttons = tool.multiple ? [['↑', 'Move up', -1], ['↓', 'Move down', 1]] : [];
@@ -575,7 +627,9 @@ async function runJob(current, data, signal) {
   const { mode, files, selection, imageFormat } = data;
   if (mode === 'scan') {
     const { prepareScanPages } = await import('./scan.js');
-    const pages = await prepareScanPages(files, data.grayscale, signal);
+    const pages = await prepareScanPages(files, files.map(file => scanEdits.get(file)), data.grayscale, signal, page => {
+      if (job === current) report(`Preparing page ${page} of ${files.length}…`);
+    });
     if (job === current) startWorker({ ...data, files: pages });
     return;
   }

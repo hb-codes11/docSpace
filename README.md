@@ -9,7 +9,7 @@
 ## What makes docSpace useful
 
 - **Your files stay on your device.** The tools work in the browser and are available without signing in.
-- **Scan from your phone.** Capture pages with the rear camera or choose photos, review their order, and create an A4 PDF.
+- **Scan from your phone.** Capture pages with the rear camera or choose photos, review their order, and create an A4 PDF. Open **Edit** on each page to adjust its corners, correct perspective, rotate it, or preview the result.
 - **Name each download.** Enter a filename in **Save as**. The app keeps the correct extension for PDF, DOCX, and ZIP results.
 - **Work with pages visually.** Select thumbnails, drag pages into order, or enter a range like `1-3, 7`.
 - **Pick up where the last tool finished.** **Continue with this PDF** carries the output into another tool. The workspace adapts to desktop and mobile.
