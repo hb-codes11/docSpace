@@ -261,3 +261,54 @@ test('crops and rotates a scanner page before PDF export', async ({ page }) => {
   const pdf = await PDFDocument.load(await result(page, 'scan.pdf'));
   expect(pdf.getPages().map(p => p.getSize())).toEqual([{ width: 842, height: 595 }]);
 });
+
+test('signs, sanitizes, and redacts a confidential document', async ({ page }) => {
+  await page.goto('/#/sign-pdf');
+  await expect(page.locator('#sign-options')).toBeHidden();
+
+  const doc = await PDFDocument.create();
+  doc.addPage([500, 500]);
+  doc.setTitle('Confidential Financial Agreement');
+  doc.setAuthor('Internal Executive');
+  const buffer = Buffer.from(await doc.save());
+
+  await page.locator('#picker').setInputFiles({ name: 'contract.pdf', mimeType: 'application/pdf', buffer });
+  await expect(page.locator('#sign-options')).toBeVisible();
+
+  // Try to sign without drawing
+  await page.getByRole('button', { name: 'Apply signature' }).click();
+  await expect(page.locator('#status')).toContainText('Please draw your signature');
+
+  // Draw signature on canvas
+  const box = await page.locator('#signature-pad').boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box.x + 20, box.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 100, box.y + 80);
+  await page.mouse.up();
+
+  // Apply signature
+  await page.getByRole('button', { name: 'Apply signature' }).click();
+  const signedBuffer = await result(page, 'signed.pdf');
+  const signedPdf = await PDFDocument.load(signedBuffer);
+  expect(signedPdf.getPageCount()).toBe(1);
+
+  // Switch to Sanitize PDF
+  await page.getByRole('button', { name: /Sanitize & Strip Metadata/i }).click();
+  await page.locator('#picker').setInputFiles({ name: 'contract.pdf', mimeType: 'application/pdf', buffer });
+  await page.getByRole('button', { name: 'Sanitize PDF' }).click();
+  const sanitizedBuffer = await result(page, 'sanitized.pdf');
+  const sanitizedPdf = await PDFDocument.load(sanitizedBuffer);
+  expect(sanitizedPdf.getTitle()).toBe('');
+  expect(sanitizedPdf.getAuthor()).toBe('');
+
+  // Switch to Redact PDF
+  await page.getByRole('button', { name: /Redact & Blackout/i }).click();
+  await page.locator('#picker').setInputFiles({ name: 'contract.pdf', mimeType: 'application/pdf', buffer });
+  await page.locator('#watermark-text').fill('[REDACTED]');
+  await page.getByRole('button', { name: 'Blackout sensitive areas' }).click();
+  const redactedBuffer = await result(page, 'redacted.pdf');
+  const redactedPdf = await PDFDocument.load(redactedBuffer);
+  expect(redactedPdf.getTitle()).toBe('');
+});
+
