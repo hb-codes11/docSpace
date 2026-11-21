@@ -11,6 +11,9 @@ import stampIcon from 'lucide-static/icons/stamp.svg?raw';
 import numbersIcon from 'lucide-static/icons/list-ordered.svg?raw';
 
 import scanIcon from 'lucide-static/icons/scan-line.svg?raw';
+import signIcon from 'lucide-static/icons/signature.svg?raw';
+import sanitizeIcon from 'lucide-static/icons/shield-check.svg?raw';
+import redactIcon from 'lucide-static/icons/shield-alert.svg?raw';
 
 export const tools = {
   scan: {
@@ -259,6 +262,54 @@ export const tools = {
       { title: 'Save the numbered copy', desc: 'Download or continue with another PDF tool.' }
     ],
     faqs: [{ q: 'How are selected pages numbered?', a: 'Numbers increment in the order of your selected range, starting at the number you enter.' }]
+  },
+  sign: {
+    id: 'sign', slug: 'sign-pdf', title: 'Sign PDF', actionText: 'Apply signature',
+    summary: 'Draw & embed signature directly in browser', icon: signIcon,
+    hint: 'Draw your handwritten signature on your phone, tablet, or laptop and place it directly on your document.',
+    steps: [
+      { title: 'Select Document', desc: 'Pick the PDF contract or document you want to sign.' },
+      { title: 'Draw Signature', desc: 'Use your fingertip, stylus, or mouse on the signature canvas.' },
+      { title: 'Place & Save', desc: 'Select page and corner position, then embed signature into the PDF.' }
+    ],
+    features: [
+      '100% confidential: your signature never leaves your browser.',
+      'Supports smooth pressure and touch-enabled stylus input.',
+      'Vector-sharp embedding directly into PDF graphics stream.'
+    ],
+    faqs: [{ q: 'Is my handwritten signature uploaded to any server?', a: 'Never. Like all docSpace features, the signature graphic is embedded in-memory in your local web browser.' }]
+  },
+  sanitize: {
+    id: 'sanitize', slug: 'sanitize-pdf', title: 'Sanitize & Strip Metadata', actionText: 'Sanitize PDF',
+    summary: 'Remove hidden metadata, author, and GPS history', icon: sanitizeIcon,
+    hint: 'Eliminate sensitive author names, internal company software tags, creation dates, and GPS metadata.',
+    steps: [
+      { title: 'Select PDF', desc: 'Pick the document you want to scrub.' },
+      { title: 'Inspect & Scrub', desc: 'docSpace removes document info dicts, author IDs, and history tags.' },
+      { title: 'Download Clean PDF', desc: 'Save clean, zero-leak PDF document.' }
+    ],
+    features: [
+      'Removes author, company, keywords, creator, and producer metadata.',
+      'Resets creation and modification timestamps.',
+      'Prevents corporate OS and user leaks before public distribution.'
+    ],
+    faqs: [{ q: 'Does sanitizing alter document appearance?', a: 'No. Visual page contents remain unchanged, but all invisible tracking metadata tags are stripped.' }]
+  },
+  redact: {
+    id: 'redact', slug: 'redact-pdf', title: 'Redact & Blackout', actionText: 'Blackout sensitive areas',
+    summary: 'Blackout sensitive text & confidential zones', icon: redactIcon,
+    hint: 'Place solid blackout bars across headers, footers, or sensitive page sections with automated metadata scrubbing.',
+    steps: [
+      { title: 'Select PDF', desc: 'Pick the confidential document to redact.' },
+      { title: 'Choose Pages & Label', desc: 'Specify page range and optional overlay text like [CONFIDENTIAL].' },
+      { title: 'Blackout & Sanitize', desc: 'Applies permanent visual blackout bars and scrubs metadata.' }
+    ],
+    features: [
+      'Draws permanent blackout barriers across designated coordinates.',
+      'Automatically scrubs tracking metadata and revision history.',
+      'Ideal for legal submissions, FOIA disclosures, and customer privacy.'
+    ],
+    faqs: [{ q: 'Can blacked-out areas be uncovered?', a: 'No. Visual blackout shapes are written into the PDF stream alongside metadata erasure.' }]
   }
 };
 

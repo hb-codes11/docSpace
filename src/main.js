@@ -8,6 +8,7 @@ import { getInitialRoute, syncUrlAndMetadata } from './router.js';
 import { outputFilename } from './filenames.js';
 import { bindTheme, bindInstall } from './app-settings.js';
 import { initTechText } from './components/TechText.js';
+import { checkClientRateLimit } from './rate-limiter.js';
 
 import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
 import uploadIcon from 'lucide-static/icons/upload-cloud.svg?raw';
@@ -120,6 +121,30 @@ app.innerHTML = `
       <label id="number-label" for="number-start">Start numbering at</label>
       <input id="number-start" type="number" min="1" max="99999" value="1">
     </div>
+
+    <div id="sign-options" hidden>
+      <label for="signature-pad">Draw signature</label>
+      <div class="signature-container">
+        <canvas id="signature-pad" width="460" height="150"></canvas>
+        <div class="signature-tools">
+          <button type="button" class="outline" id="clear-signature">Clear pad</button>
+        </div>
+      </div>
+      <div class="sign-meta-fields">
+        <div>
+          <label for="sign-page">Page number</label>
+          <input id="sign-page" type="number" min="1" max="500" value="1">
+        </div>
+        <div>
+          <label for="sign-position">Position</label>
+          <select id="sign-position">
+            <option value="bottom-right">Bottom right</option>
+            <option value="bottom-center">Bottom center</option>
+            <option value="center">Center</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <p id="page-feedback" aria-live="polite"></p>
     <ol id="page-grid" aria-label="PDF pages" hidden></ol>
 
@@ -168,6 +193,9 @@ app.innerHTML = `
         <ul class="footer-links">
           <li><a href="/merge-pdf" class="footer-link" data-switch-tool="merge">Merge PDFs</a></li>
           <li><a href="/split-pdf" class="footer-link" data-switch-tool="split">Split PDF</a></li>
+          <li><a href="/sign-pdf" class="footer-link" data-switch-tool="sign">Sign PDF</a></li>
+          <li><a href="/sanitize-pdf" class="footer-link" data-switch-tool="sanitize">Sanitize PDF</a></li>
+          <li><a href="/redact-pdf" class="footer-link" data-switch-tool="redact">Redact PDF</a></li>
           <li><a href="/organize-pdf" class="footer-link" data-switch-tool="organize">Organize PDF</a></li>
           <li><a href="/compress-pdf" class="footer-link" data-switch-tool="compress">Compress Scan PDF</a></li>
         </ul>
@@ -374,14 +402,23 @@ function render(focusIndex, action) {
   $('process').hidden = !files.length || Boolean(job);
   updateProcessButton();
   $('cancel').hidden = !job;
-  $('split-options').hidden = !['split', 'export', 'watermark', 'numbers'].includes(mode) || !files.length;
+  $('split-options').hidden = !['split', 'export', 'watermark', 'numbers', 'redact'].includes(mode) || !files.length;
   $('zip-option').hidden = mode !== 'split';
   $('image-options').hidden = mode !== 'export' || !files.length;
   $('pages').disabled = $('separate').disabled = $('image-format').disabled = Boolean(job);
-  $('stamp-options').hidden = !['watermark', 'numbers'].includes(mode) || !files.length;
-  $('watermark-label').hidden = $('watermark-text').hidden = mode !== 'watermark';
+  $('stamp-options').hidden = !['watermark', 'numbers', 'redact'].includes(mode) || !files.length;
+  $('watermark-label').hidden = $('watermark-text').hidden = !['watermark', 'redact'].includes(mode);
+  if (mode === 'redact') {
+    $('watermark-label').textContent = 'Redaction label (optional)';
+    $('watermark-text').placeholder = 'e.g. [CONFIDENTIAL] or [REDACTED]';
+  } else if (mode === 'watermark') {
+    $('watermark-label').textContent = 'Watermark text';
+    $('watermark-text').placeholder = 'For example, DRAFT';
+  }
   $('number-label').hidden = $('number-start').hidden = mode !== 'numbers';
   $('watermark-text').disabled = $('number-start').disabled = Boolean(job);
+  $('sign-options').hidden = mode !== 'sign' || !files.length;
+  $('sign-page').disabled = $('sign-position').disabled = $('clear-signature').disabled = Boolean(job);
   pagePicker.setDisabled(Boolean(job));
 
   for (const button of document.querySelectorAll('[data-mode]')) {
@@ -570,7 +607,70 @@ $('share-file').onclick = async () => {
     if (error.name !== 'AbortError') report('Could not share this file. Use Download to save it.', true);
   }
 };
-$('watermark-text').oninput = $('number-start').oninput = clearResult;
+// Signature canvas drawing setup
+const signatureCanvas = $('signature-pad');
+let sigCtx;
+let isDrawingSig = false;
+let hasSignatureStroke = false;
+
+if (signatureCanvas) {
+  sigCtx = signatureCanvas.getContext('2d');
+  sigCtx.lineWidth = 2.5;
+  sigCtx.lineCap = 'round';
+  sigCtx.lineJoin = 'round';
+  sigCtx.strokeStyle = '#181528';
+
+  const getPos = e => {
+    const rect = signatureCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (signatureCanvas.width / rect.width),
+      y: (clientY - rect.top) * (signatureCanvas.height / rect.height)
+    };
+  };
+
+  const startDraw = e => {
+    e.preventDefault();
+    isDrawingSig = true;
+    hasSignatureStroke = true;
+    const pos = getPos(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(pos.x, pos.y);
+    clearResult();
+  };
+
+  const drawMove = e => {
+    if (!isDrawingSig) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    sigCtx.lineTo(pos.x, pos.y);
+    sigCtx.stroke();
+  };
+
+  const endDraw = e => {
+    if (isDrawingSig) {
+      isDrawingSig = false;
+      sigCtx.closePath();
+    }
+  };
+
+  signatureCanvas.addEventListener('mousedown', startDraw);
+  signatureCanvas.addEventListener('mousemove', drawMove);
+  window.addEventListener('mouseup', endDraw);
+
+  signatureCanvas.addEventListener('touchstart', startDraw, { passive: false });
+  signatureCanvas.addEventListener('touchmove', drawMove, { passive: false });
+  window.addEventListener('touchend', endDraw);
+
+  $('clear-signature').onclick = () => {
+    sigCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    hasSignatureStroke = false;
+    clearResult();
+  };
+}
+
+$('watermark-text').oninput = $('number-start').oninput = $('sign-page').oninput = $('sign-position').onchange = clearResult;
 $('continue-tool').onclick = () => {
   if (result?.blob.type !== 'application/pdf' || job) return;
   const file = namedResult();
@@ -660,6 +760,18 @@ async function runJob(current, data, signal) {
 }
 
 $('process').onclick = () => {
+  try {
+    checkClientRateLimit();
+  } catch (rateErr) {
+    report(rateErr.message, true);
+    return;
+  }
+
+  if (mode === 'sign' && !hasSignatureStroke) {
+    report('Please draw your signature in the pad before proceeding.', true);
+    return;
+  }
+
   clearResult();
   const controller = new AbortController();
   const current = { cancel: () => controller.abort() };
@@ -672,6 +784,8 @@ $('process').onclick = () => {
     imageFormat: $('image-format').value,
     grayscale: $('grayscale').checked,
     stampOptions: { text: $('watermark-text').value, start: $('number-start').value },
+    signatureDataUrl: mode === 'sign' ? signatureCanvas?.toDataURL('image/png') : null,
+    signOptions: { page: $('sign-page').value, position: $('sign-position').value },
   };
   runJob(current, data, controller.signal).catch(error => {
     if (job !== current) return;

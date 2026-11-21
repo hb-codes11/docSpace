@@ -2,7 +2,7 @@ import { combine, openPdf, pageSelection } from './pdf.js';
 import { MAX_BYTES, MAX_PAGES } from './limits.js';
 
 
-self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, lines, stampOptions } }) => {
+self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, lines, stampOptions, signatureDataUrl, signOptions } }) => {
   try {
     if (files.reduce((size, file) => size + file.size, 0) > MAX_BYTES) {
       throw new Error('Choose files totaling 100 MB or less.');
@@ -27,6 +27,30 @@ self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, l
       const { stampPdf } = await import('./stamp.js');
       const bytes = await stampPdf(groups[0].pdf, mode, stampOptions, selection);
       self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: mode === 'watermark' ? 'watermarked.pdf' : 'numbered.pdf' });
+      return;
+    }
+
+    if (mode === 'sign') {
+      const { signPdf } = await import('./protect.js');
+      const pageIndex = Number(signOptions?.page ?? 1) - 1;
+      const position = signOptions?.position ?? 'bottom-right';
+      const bytes = await signPdf(groups[0].pdf, signatureDataUrl, pageIndex, position);
+      self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: 'signed.pdf' });
+      return;
+    }
+
+    if (mode === 'sanitize') {
+      const { sanitizePdf } = await import('./protect.js');
+      const bytes = await sanitizePdf(groups[0].pdf);
+      self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: 'sanitized.pdf' });
+      return;
+    }
+
+    if (mode === 'redact') {
+      const { redactPdf } = await import('./protect.js');
+      const label = stampOptions?.text || '[REDACTED]';
+      const bytes = await redactPdf(groups[0].pdf, selection, label);
+      self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: 'redacted.pdf' });
       return;
     }
 

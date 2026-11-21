@@ -982,7 +982,7 @@ dialog label { display: block; margin: 16px 0 6px; font-weight: 700; font-size: 
 /* ═══════════════════════════════════════
    STAMP OPTIONS & CONTINUE
 ═══════════════════════════════════════ */
-#stamp-options {
+#stamp-options, #sign-options {
   display: grid;
   gap: 10px;
   margin-block: 20px;
@@ -991,8 +991,10 @@ dialog label { display: block; margin: 16px 0 6px; font-weight: 700; font-size: 
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
 }
-#stamp-options label { font-weight: 700; font-size: 14px; }
+#stamp-options label, #sign-options label { font-weight: 700; font-size: 14px; }
 #stamp-options input,
+#sign-options input,
+#sign-options select,
 #continue-options select {
   font: inherit;
   color: var(--ink);
@@ -1005,10 +1007,41 @@ dialog label { display: block; margin: 16px 0 6px; font-weight: 700; font-size: 
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 #stamp-options input:focus,
+#sign-options input:focus,
+#sign-options select:focus,
 #continue-options select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
   outline: none;
+}
+
+.signature-container {
+  display: grid;
+  gap: 10px;
+}
+#signature-pad {
+  display: block;
+  width: 100%;
+  max-width: 460px;
+  height: 150px;
+  background: #ffffff;
+  border: 1.5px dashed #c4b5fd;
+  border-radius: var(--radius-sm);
+  touch-action: none;
+  cursor: crosshair;
+}
+.signature-tools {
+  display: flex;
+  gap: 10px;
+}
+.sign-meta-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+@media (max-width: 500px) {
+  .sign-meta-fields { grid-template-columns: 1fr; }
 }
 
 #continue-options {
@@ -1201,6 +1234,7 @@ dialog label { display: block; margin: 16px 0 6px; font-weight: 700; font-size: 
 [data-theme="dark"] #split-options,
 [data-theme="dark"] #image-options,
 [data-theme="dark"] #stamp-options,
+[data-theme="dark"] #sign-options,
 [data-theme="dark"] #page-grid,
 [data-theme="dark"] .step-card,
 [data-theme="dark"] .faq-item,
@@ -1217,6 +1251,9 @@ dialog label { display: block; margin: 16px 0 6px; font-weight: 700; font-size: 
 [data-theme="dark"] input[type="text"],
 [data-theme="dark"] input[type="email"],
 [data-theme="dark"] #stamp-options input,
+[data-theme="dark"] #sign-options input,
+[data-theme="dark"] #sign-options select,
+[data-theme="dark"] #signature-pad,
 [data-theme="dark"] #image-format,
 [data-theme="dark"] #continue-options select {
   background: var(--paper);
