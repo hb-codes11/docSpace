@@ -31,6 +31,9 @@
 | Word to PDF | Creates a plain-text PDF from DOCX. Supports Western European characters and omits original formatting and images. |
 | Watermark PDF | Adds a translucent, centered text watermark to selected unrotated pages. Supports Western European characters. |
 | Page numbers | Adds bottom-centered numbering to selected unrotated pages, with a custom starting number. |
+| Sign PDF | Embeds a handwritten PNG signature on a chosen page. This is a visual signature. |
+| Sanitize PDF | Removes the document information dictionary, including custom fields, and document-level XMP. Review annotations, embedded files, and image metadata separately. |
+| Redact & Blackout | Burns a fixed band near the top of selected pages into their pixels. Rebuilds every page as an image, removing selectable text, links, forms, and annotations. Limited to 50 pages. Review the saved output before sharing. |
 
 The file queue accepts up to 50 files and 100 MB total. PDF processing is limited to 500 pages per job, with lower limits for some tools. Available memory and document complexity affect how large a job the browser can handle.
 
@@ -89,7 +92,7 @@ For Vercel, import the same repository as a Vite project. The included [`vercel.
 
 ### Optional accounts
 
-1. Apply every SQL file in [`supabase/migrations/`](supabase/migrations/) in filename order. This sets up preferences, profiles, usage counts, and the tool catalog constraints. If you already applied the first five migrations, apply only [the scanner migration](supabase/migrations/20261115000000_document_scanner.sql) before enabling accounts on this release.
+1. Apply every SQL file in [`supabase/migrations/`](supabase/migrations/) in filename order. This sets up preferences, profiles, usage counts, and the tool catalog constraints. If you already applied the first five migrations, apply [the scanner migration](supabase/migrations/20261115000000_document_scanner.sql), followed by [the signing and privacy tools migration](supabase/migrations/20261121000000_privacy_and_rate_limiting.sql). If the scanner migration is already applied, run only the remaining migration.
 2. In Supabase Auth, set the deployment URL as the Site URL and allow the exact sign-in return URLs, including `http://localhost:5173/` for local testing.
 3. Copy [`.env.example`](.env.example) to `.env.local` for local development. On your host, set the same variables before building.
 
@@ -102,6 +105,6 @@ Rebuild after changing these variables. For a live account rollout, verify email
 
 ## Where it’s going
 
-I’m building docSpace as a personal project and plan to expand it over time. The [roadmap](ROADMAP.md) tracks page previews and undo, form filling, visual signatures, on-device OCR, better Word conversion, and offline installation.
+I’m building docSpace as a personal project and plan to expand it over time. The [roadmap](ROADMAP.md) tracks future improvements, including form filling, on-device OCR, and better Word conversion. Visual signatures and offline installation are available now.
 
 Found a bug? [Open an issue](https://github.com/hb-codes11/docSpace/issues/new) with the tool, browser, and steps to reproduce. Use a synthetic sample if a document is needed to reproduce it.
