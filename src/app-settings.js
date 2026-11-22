@@ -10,7 +10,7 @@ export function bindTheme(select, onChange) {
   const apply = () => {
     const dark = select.value === 'dark' || (select.value === 'system' && system.matches);
     root.dataset.theme = dark ? 'dark' : 'light';
-    document.querySelector('meta[name="theme-color"]').content = dark ? '#171322' : '#f8f7fc';
+    document.querySelector('meta[name="theme-color"]').content = dark ? '#121b27' : '#f3f6fa';
     onChange(dark);
   };
   select.onchange = () => {

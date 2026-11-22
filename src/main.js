@@ -7,7 +7,6 @@ import { privacyPolicyContent, termsOfServiceContent, aboutContent } from './com
 import { getInitialRoute, syncUrlAndMetadata } from './router.js';
 import { outputFilename } from './filenames.js';
 import { bindTheme, bindInstall } from './app-settings.js';
-import { initTechText } from './components/TechText.js';
 import { checkClientRateLimit } from './rate-limiter.js';
 
 import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
@@ -33,6 +32,12 @@ let session;
 let userSelectedTool = false;
 let draggedFile;
 
+const toolGroups = [
+  { title: 'Pages', ids: ['merge', 'split', 'organize', 'numbers', 'watermark'] },
+  { title: 'Convert', ids: ['images', 'export', 'docx', 'word', 'compress'] },
+  { title: 'Capture & protect', ids: ['scan', 'sign', 'sanitize', 'redact'] },
+];
+
 const app = document.querySelector('#app');
 app.innerHTML = `
 <header class="top">
@@ -48,9 +53,9 @@ app.innerHTML = `
     </nav>
     <div class="top-actions">
       <select id="theme" aria-label="Color theme">
-        <option value="system">System theme</option>
-        <option value="light">Light theme</option>
-        <option value="dark">Dark theme</option>
+        <option value="system">System</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
       </select>
       <button id="install" class="outline" type="button">Install app</button>
       ${hasAccount ? '<button id="account" class="outline">Sign in</button>' : ''}
@@ -59,22 +64,31 @@ app.innerHTML = `
 </header>
 
 <section class="shell hero" id="tools-section">
-  <h1 class="sr-only">docSpace</h1>
-  <div id="hero-tech-wordmark" class="hero-tech-container" aria-hidden="true"></div>
-  <p>Scan, organize, and convert documents on your device.</p>
+  <h1>A better space for<br>your documents.</h1>
+  <div class="hero-intro">
+    <p>Merge, scan, sign, and convert.<br> Your everyday paperwork, handled here.</p>
+    <span class="privacy-note">${shieldIcon} Files stay on your device</span>
+  </div>
 </section>
 
 <main class="shell studio">
   <aside class="rail">
+    <div class="rail-heading">Your tools <span>${Object.keys(tools).length}</span></div>
     <nav aria-label="PDF tools" class="tools">
-      ${Object.entries(tools).map(([key, tool]) =>
-        `<button class="tool" data-mode="${key}" aria-pressed="${String(key === mode)}">
-          <span class="tool-icon">${tool.icon}</span>
-          <span><strong>${tool.title}</strong><small>${tool.summary}</small></span>
-        </button>`
-      ).join('')}
+      ${toolGroups.map(group => `
+        <div class="tool-group">
+          <h2 class="tool-group-title">${group.title}</h2>
+          ${group.ids.map(key => {
+            const tool = tools[key];
+            return `<button class="tool" data-mode="${key}" aria-pressed="${String(key === mode)}" aria-label="${tool.title}">
+              <span class="tool-icon">${tool.icon}</span>
+              <span class="tool-label">${tool.title}</span>
+            </button>`;
+          }).join('')}
+        </div>
+      `).join('')}
     </nav>
-    <p class="rail-note">${shieldIcon} Files stay on your device</p>
+    <p class="rail-note">${shieldIcon}<span>Private by design.<br>Processed on this device.</span></p>
   </aside>
 
   <section class="workbench" aria-labelledby="tool-title">
@@ -84,7 +98,7 @@ app.innerHTML = `
     </div>
 
     <div class="drop" id="drop" role="region" aria-label="File upload area">
-      <span class="upload-icon">${uploadIcon}</span>
+      <span class="upload-icon" aria-hidden="true">${uploadIcon}</span>
       <strong id="drop-title">Drop PDF files here</strong>
       <span class="limit">Up to 100 MB and 500 pages per job</span>
       <div class="file-actions">
@@ -181,12 +195,12 @@ app.innerHTML = `
   <div class="shell">
     <div class="footer-grid">
       <div class="footer-col">
-        <a class="brand" href="/" style="margin-bottom: 12px; display:inline-flex;">
+        <a class="brand" href="/">
           <span class="brand-icon">${mergeIcon}</span>
           <span class="brand-name">docSpace</span>
         </a>
         <p>A personal project for everyday PDF and Word work.</p>
-        <span class="private" style="display:inline-flex;">${shieldIcon} Files processed on your device</span>
+        <span class="private">${shieldIcon} Files processed on your device</span>
       </div>
       <div class="footer-col">
         <h4>PDF Workflows</h4>
@@ -874,29 +888,7 @@ render();
 updateLandingContent();
 syncUrlAndMetadata(mode);
 
-// Initialize React Bits TechText component
-const techContainer = document.getElementById('hero-tech-wordmark');
-if (techContainer) {
-  const wordmark = initTechText(techContainer, {
-    text: 'docSpace',
-    fontWeight: 850,
-    fontSize: window.innerWidth < 640 ? 56 : 82,
-    letterSpacing: -0.04,
-    color: '#181528',
-    accentColor: '#7c3aed',
-    align: 'left',
-    reach: 160,
-    dashLength: 4,
-    dashGap: 2,
-    strokeWidth: 1.5,
-    draggable: true,
-    clickKick: true,
-    sweep: true,
-    labels: true,
-    specks: 12,
-  });
-  bindTheme($('theme'), dark => wordmark.update({ color: dark ? '#f4efff' : '#181528', accentColor: dark ? '#c4a7ff' : '#7c3aed' }));
-}
+bindTheme($('theme'), () => {});
 $('install-dialog').addEventListener('close', () => $('install').focus());
 bindInstall($('install'), $('install-dialog'));
 

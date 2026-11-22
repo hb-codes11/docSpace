@@ -284,7 +284,8 @@ test('signs, sanitizes, and redacts a confidential document', async ({ page }) =
   await expect(page.locator('#status')).toContainText('Please draw your signature');
 
   await expect(page.locator('#signature-pad')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-  // Draw signature on canvas
+  // Scroll the actual drawing surface into view before using viewport coordinates.
+  await page.locator('#signature-pad').scrollIntoViewIfNeeded();
   const box = await page.locator('#signature-pad').boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box.x + 20, box.y + 20);
