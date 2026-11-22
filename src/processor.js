@@ -46,14 +46,6 @@ self.onmessage = async ({ data: { files, mode, selection, separate, pageEdits, l
       return;
     }
 
-    if (mode === 'redact') {
-      const { redactPdf } = await import('./protect.js');
-      const label = stampOptions?.text || '[REDACTED]';
-      const bytes = await redactPdf(groups[0].pdf, selection, label);
-      self.postMessage({ blob: new Blob([bytes], { type: 'application/pdf' }), filename: 'redacted.pdf' });
-      return;
-    }
-
     if (mode === 'split') {
       const pages = pageSelection(selection || `1-${pageCount}`, pageCount);
       if (separate) {

@@ -263,11 +263,15 @@ test('crops and rotates a scanner page before PDF export', async ({ page }) => {
 });
 
 test('signs, sanitizes, and redacts a confidential document', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/#/sign-pdf');
   await expect(page.locator('#sign-options')).toBeHidden();
 
   const doc = await PDFDocument.create();
-  doc.addPage([500, 500]);
+  const sourcePage = doc.addPage([500, 500]);
+  sourcePage.drawText('CONFIDENTIAL-ACCOUNT-12345', { x: 50, y: 440, size: 12 });
+  sourcePage.drawText('Public report', { x: 50, y: 300, size: 12 });
   doc.setTitle('Confidential Financial Agreement');
   doc.setAuthor('Internal Executive');
   const buffer = Buffer.from(await doc.save());
@@ -279,6 +283,7 @@ test('signs, sanitizes, and redacts a confidential document', async ({ page }) =
   await page.getByRole('button', { name: 'Apply signature' }).click();
   await expect(page.locator('#status')).toContainText('Please draw your signature');
 
+  await expect(page.locator('#signature-pad')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   // Draw signature on canvas
   const box = await page.locator('#signature-pad').boundingBox();
   expect(box).not.toBeNull();
@@ -286,6 +291,11 @@ test('signs, sanitizes, and redacts a confidential document', async ({ page }) =
   await page.mouse.down();
   await page.mouse.move(box.x + 100, box.y + 80);
   await page.mouse.up();
+
+  await page.getByLabel('Page number', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Apply signature' }).click();
+  await expect(page.locator('#status')).toContainText('Choose a page from 1 to 1');
+  await page.getByLabel('Page number', { exact: true }).fill('1');
 
   // Apply signature
   await page.getByRole('button', { name: 'Apply signature' }).click();
@@ -298,9 +308,9 @@ test('signs, sanitizes, and redacts a confidential document', async ({ page }) =
   await page.locator('#picker').setInputFiles({ name: 'contract.pdf', mimeType: 'application/pdf', buffer });
   await page.getByRole('button', { name: 'Sanitize PDF' }).click();
   const sanitizedBuffer = await result(page, 'sanitized.pdf');
-  const sanitizedPdf = await PDFDocument.load(sanitizedBuffer);
-  expect(sanitizedPdf.getTitle()).toBe('');
-  expect(sanitizedPdf.getAuthor()).toBe('');
+  const sanitizedPdf = await PDFDocument.load(sanitizedBuffer, { updateMetadata: false });
+  expect(sanitizedPdf.getTitle()).toBeUndefined();
+  expect(sanitizedPdf.getAuthor()).toBeUndefined();
 
   // Switch to Redact PDF
   await page.getByRole('button', { name: /Redact & Blackout/i }).click();
@@ -308,7 +318,26 @@ test('signs, sanitizes, and redacts a confidential document', async ({ page }) =
   await page.locator('#watermark-text').fill('[REDACTED]');
   await page.getByRole('button', { name: 'Blackout sensitive areas' }).click();
   const redactedBuffer = await result(page, 'redacted.pdf');
-  const redactedPdf = await PDFDocument.load(redactedBuffer);
-  expect(redactedPdf.getTitle()).toBe('');
+  const redactedPdf = await PDFDocument.load(redactedBuffer, { updateMetadata: false });
+  expect(redactedPdf.getTitle()).toBeUndefined();
+  const renderingModule = await page.evaluate(() => performance.getEntriesByType('resource').find(entry => /\/view-pdf-[^/]+\.js/.test(entry.name)).name);
+  const inspected = await page.evaluate(async ({ moduleUrl, data }) => {
+    const { withPdf, pageImage } = await import(moduleUrl);
+    const signal = new AbortController().signal;
+    return withPdf(new Uint8Array(data), signal, async pdf => {
+      const pdfPage = await pdf.getPage(1);
+      const text = await pdfPage.getTextContent();
+      const blob = await pageImage(pdf, 0, 500, signal);
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 500;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      return { text: text.items.map(item => item.str).join(''), coveredPixel: [...ctx.getImageData(55, 55, 1, 1).data] };
+    });
+  }, { moduleUrl: renderingModule, data: [...redactedBuffer] });
+  expect(inspected.text).toBe('');
+  expect(inspected.coveredPixel).toEqual([20, 20, 31, 255]);
 });
 

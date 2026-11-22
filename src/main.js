@@ -620,48 +620,40 @@ if (signatureCanvas) {
   sigCtx.lineJoin = 'round';
   sigCtx.strokeStyle = '#181528';
 
-  const getPos = e => {
+  const getPos = event => {
     const rect = signatureCanvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
-      x: (clientX - rect.left) * (signatureCanvas.width / rect.width),
-      y: (clientY - rect.top) * (signatureCanvas.height / rect.height)
+      x: (event.clientX - rect.left) * (signatureCanvas.width / rect.width),
+      y: (event.clientY - rect.top) * (signatureCanvas.height / rect.height)
     };
   };
 
-  const startDraw = e => {
-    e.preventDefault();
+  signatureCanvas.addEventListener('pointerdown', event => {
+    if (job || !event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    signatureCanvas.setPointerCapture(event.pointerId);
     isDrawingSig = true;
-    hasSignatureStroke = true;
-    const pos = getPos(e);
+    const pos = getPos(event);
     sigCtx.beginPath();
     sigCtx.moveTo(pos.x, pos.y);
     clearResult();
-  };
+  });
 
-  const drawMove = e => {
-    if (!isDrawingSig) return;
-    e.preventDefault();
-    const pos = getPos(e);
+  signatureCanvas.addEventListener('pointermove', event => {
+    if (!isDrawingSig || !signatureCanvas.hasPointerCapture(event.pointerId)) return;
+    const pos = getPos(event);
     sigCtx.lineTo(pos.x, pos.y);
     sigCtx.stroke();
+    hasSignatureStroke = true;
+  });
+
+  const endDraw = () => {
+    isDrawingSig = false;
+    sigCtx.closePath();
   };
-
-  const endDraw = e => {
-    if (isDrawingSig) {
-      isDrawingSig = false;
-      sigCtx.closePath();
-    }
-  };
-
-  signatureCanvas.addEventListener('mousedown', startDraw);
-  signatureCanvas.addEventListener('mousemove', drawMove);
-  window.addEventListener('mouseup', endDraw);
-
-  signatureCanvas.addEventListener('touchstart', startDraw, { passive: false });
-  signatureCanvas.addEventListener('touchmove', drawMove, { passive: false });
-  window.addEventListener('touchend', endDraw);
+  signatureCanvas.addEventListener('pointerup', endDraw);
+  signatureCanvas.addEventListener('pointercancel', endDraw);
+  signatureCanvas.addEventListener('lostpointercapture', endDraw);
 
   $('clear-signature').onclick = () => {
     sigCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
@@ -733,7 +725,7 @@ async function runJob(current, data, signal) {
     if (job === current) startWorker({ ...data, files: pages });
     return;
   }
-  if (!['word', 'export', 'compress', 'docx'].includes(mode)) {
+  if (!['word', 'export', 'compress', 'docx', 'redact'].includes(mode)) {
     startWorker(data);
     return;
   }
@@ -747,7 +739,10 @@ async function runJob(current, data, signal) {
   }
 
   let result;
-  if (mode === 'word') {
+  if (mode === 'redact') {
+    const { redactPdf } = await import('./redact.js');
+    result = { blob: await redactPdf(bytes, signal, selection, data.stampOptions.text), filename: 'redacted.pdf' };
+  } else if (mode === 'word') {
     const { toWord } = await import('./word.js');
     result = { blob: await toWord(bytes, signal), filename: 'converted.docx' };
   } else {

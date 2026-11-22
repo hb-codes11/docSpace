@@ -1,23 +1,23 @@
-import { rgb } from 'pdf-lib';
-import { pageSelection } from './ranges.js';
+import { PDFName } from 'pdf-lib';
 
 export async function sanitizePdf(pdf) {
-  // Clear standard document information dictionary
-  pdf.setTitle('');
-  pdf.setAuthor('');
-  pdf.setSubject('');
-  pdf.setKeywords([]);
-  pdf.setProducer('docSpace (Privacy-First Client Engine)');
-  pdf.setCreator('docSpace (100% On-Device)');
-  pdf.setCreationDate(new Date(0));
-  pdf.setModificationDate(new Date(0));
+  // Remove both standard and custom document information, plus document XMP.
+  const info = pdf.context.trailerInfo.Info;
+  if (info) pdf.context.delete(info);
+  pdf.context.trailerInfo.Info = undefined;
+  const metadata = pdf.catalog.get(PDFName.of('Metadata'));
+  if (metadata) pdf.context.delete(metadata);
+  pdf.catalog.delete(PDFName.of('Metadata'));
 
   return pdf.save();
 }
 
 export async function signPdf(pdf, signatureDataUrl, pageIndex = 0, position = 'bottom-right') {
   const count = pdf.getPageCount();
-  const targetIndex = Math.max(0, Math.min(count - 1, Number(pageIndex) || 0));
+  const targetIndex = Number(pageIndex);
+  if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= count) {
+    throw new Error(`Choose a page from 1 to ${count}.`);
+  }
   const page = pdf.getPage(targetIndex);
   const box = page.getCropBox();
 
@@ -33,18 +33,20 @@ export async function signPdf(pdf, signatureDataUrl, pageIndex = 0, position = '
   }
 
   const image = await pdf.embedPng(bytes);
-  const targetWidth = Math.min(180, box.width * 0.35);
-  const targetHeight = targetWidth * (image.height / image.width || 0.4);
+  const margin = Math.min(36, box.width * 0.1, box.height * 0.1);
+  const scale = Math.min(180 / image.width, (box.width - margin * 2) / image.width, (box.height - margin * 2) / image.height);
+  const targetWidth = image.width * scale;
+  const targetHeight = image.height * scale;
 
-  let x = box.x + 36;
-  let y = box.y + 36;
+  let x = box.x + margin;
+  let y = box.y + margin;
 
   if (position === 'bottom-right') {
-    x = box.x + box.width - targetWidth - 36;
-    y = box.y + 36;
+    x = box.x + box.width - targetWidth - margin;
+    y = box.y + margin;
   } else if (position === 'bottom-center') {
     x = box.x + (box.width - targetWidth) / 2;
-    y = box.y + 36;
+    y = box.y + margin;
   } else if (position === 'center') {
     x = box.x + (box.width - targetWidth) / 2;
     y = box.y + (box.height - targetHeight) / 2;
@@ -58,39 +60,4 @@ export async function signPdf(pdf, signatureDataUrl, pageIndex = 0, position = '
   });
 
   return pdf.save();
-}
-
-export async function redactPdf(pdf, range, textLabel = '') {
-  const indices = pageSelection(range || `1-${pdf.getPageCount()}`, pdf.getPageCount());
-  
-  for (const index of indices) {
-    const page = pdf.getPage(index);
-    const box = page.getCropBox();
-
-    // Visual blackout banner across header and footer zone or sensitive band
-    page.drawRectangle({
-      x: box.x + 36,
-      y: box.y + box.height - 72,
-      width: box.width - 72,
-      height: 36,
-      color: rgb(0.08, 0.08, 0.12),
-    });
-
-    if (textLabel) {
-      // Optional overlay text
-      const font = await pdf.embedStandardFont('Helvetica-Bold');
-      const fontSize = 11;
-      const textWidth = font.widthOfTextAtSize(textLabel, fontSize);
-      page.drawText(textLabel, {
-        x: box.x + (box.width - textWidth) / 2,
-        y: box.y + box.height - 54,
-        size: fontSize,
-        font,
-        color: rgb(0.95, 0.95, 0.98),
-      });
-    }
-  }
-
-  // Also sanitize metadata on redacted documents
-  return sanitizePdf(pdf);
 }

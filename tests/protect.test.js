@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PDFDocument } from 'pdf-lib';
-import { sanitizePdf, signPdf, redactPdf } from '../src/protect.js';
+import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
+import { sanitizePdf, signPdf } from '../src/protect.js';
 import { checkClientRateLimit, resetClientRateLimit } from '../src/rate-limiter.js';
 
 test('sanitizePdf strips metadata, author, and keywords', async () => {
@@ -11,12 +11,18 @@ test('sanitizePdf strips metadata, author, and keywords', async () => {
   pdf.setAuthor('John Doe');
   pdf.setKeywords(['internal', 'restricted']);
 
+  pdf.context.lookup(pdf.context.trailerInfo.Info).set(PDFName.of('InternalOwner'), PDFString.of('Private customer'));
+  const xmp = pdf.context.register(pdf.context.stream('<private>Owner</private>'));
+  pdf.catalog.set(PDFName.of('Metadata'), xmp);
   const sanitizedBytes = await sanitizePdf(pdf);
-  const reloaded = await PDFDocument.load(sanitizedBytes);
+  const reloaded = await PDFDocument.load(sanitizedBytes, { updateMetadata: false });
 
-  assert.equal(reloaded.getTitle(), '');
-  assert.equal(reloaded.getAuthor(), '');
-  assert.deepEqual(reloaded.getKeywords(), '');
+  assert.equal(reloaded.context.trailerInfo.Info, undefined);
+  assert.equal(reloaded.getTitle(), undefined);
+  assert.equal(reloaded.getAuthor(), undefined);
+  assert.equal(reloaded.getKeywords(), undefined);
+  assert.equal(reloaded.context.lookup(reloaded.context.trailerInfo.Info).has(PDFName.of('InternalOwner')), false);
+  assert.equal(reloaded.catalog.has(PDFName.of('Metadata')), false);
 });
 
 test('signPdf embeds handwritten signature on specified page', async () => {
@@ -41,16 +47,12 @@ test('signPdf rejects empty or malformed signature data URL', async () => {
   await assert.rejects(signPdf(pdf, 'invalid-signature-url', 0), /valid handwritten signature/);
 });
 
-test('redactPdf applies blackout area and scrubs metadata', async () => {
+test('signPdf rejects out-of-range pages instead of signing another page', async () => {
   const pdf = await PDFDocument.create();
-  pdf.addPage([500, 600]);
-  pdf.setTitle('Top Secret Government Report');
-
-  const redactedBytes = await redactPdf(pdf, '1', '[CLASSIFIED]');
-  const reloaded = await PDFDocument.load(redactedBytes);
-
-  assert.equal(reloaded.getTitle(), '');
-  assert.equal(reloaded.getPageCount(), 1);
+  pdf.addPage([400, 400]);
+  for (const index of [-1, 1, 1.5, NaN]) {
+    await assert.rejects(signPdf(pdf, 'unused', index), /Choose a page from 1 to 1/);
+  }
 });
 
 test('checkClientRateLimit allows operations under quota and halts bursts', () => {

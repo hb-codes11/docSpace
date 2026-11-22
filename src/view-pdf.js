@@ -26,7 +26,7 @@ export async function withPdf(bytes, signal, use) {
   }
 }
 
-export async function pageImage(pdf, index, size, signal, type = 'image/png', quality = .9) {
+export async function pageImage(pdf, index, size, signal, type = 'image/png', quality = .9, paint) {
   signal.throwIfAborted();
   const page = await pdf.getPage(index + 1);
   signal.throwIfAborted();
@@ -40,6 +40,8 @@ export async function pageImage(pdf, index, size, signal, type = 'image/png', qu
   signal.addEventListener('abort', cancel, { once: true });
   try {
     await task.promise;
+    signal.throwIfAborted();
+    paint?.(canvas, original);
     return await new Promise((resolve, reject) => {
       canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not render the page.')), type, quality);
     });

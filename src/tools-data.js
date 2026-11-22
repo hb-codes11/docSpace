@@ -274,42 +274,43 @@ export const tools = {
     ],
     features: [
       '100% confidential: your signature never leaves your browser.',
-      'Supports smooth pressure and touch-enabled stylus input.',
-      'Vector-sharp embedding directly into PDF graphics stream.'
+      'Draw with a mouse, fingertip, or stylus.',
+      'Embeds your signature drawing as a PNG on the chosen page.'
     ],
     faqs: [{ q: 'Is my handwritten signature uploaded to any server?', a: 'Never. Like all docSpace features, the signature graphic is embedded in-memory in your local web browser.' }]
   },
   sanitize: {
     id: 'sanitize', slug: 'sanitize-pdf', title: 'Sanitize & Strip Metadata', actionText: 'Sanitize PDF',
-    summary: 'Remove hidden metadata, author, and GPS history', icon: sanitizeIcon,
-    hint: 'Eliminate sensitive author names, internal company software tags, creation dates, and GPS metadata.',
+    summary: 'Remove document information and XMP metadata', icon: sanitizeIcon,
+    hint: 'Remove document-level author, title, keywords, timestamps, custom information, and XMP metadata. Embedded files, image metadata, and page content can still contain personal information.',
     steps: [
-      { title: 'Select PDF', desc: 'Pick the document you want to scrub.' },
-      { title: 'Inspect & Scrub', desc: 'docSpace removes document info dicts, author IDs, and history tags.' },
-      { title: 'Download Clean PDF', desc: 'Save clean, zero-leak PDF document.' }
+      { title: 'Select PDF', desc: 'Choose the document to process.' },
+      { title: 'Remove metadata', desc: 'Clear the document information dictionary and document-level XMP.' },
+      { title: 'Save PDF', desc: 'Download the result and review the page content before sharing.' }
     ],
     features: [
-      'Removes author, company, keywords, creator, and producer metadata.',
-      'Resets creation and modification timestamps.',
-      'Prevents corporate OS and user leaks before public distribution.'
+      'Removes standard and custom document information fields.',
+      'Removes document-level XMP metadata.',
+      'Processes the document in your browser.'
     ],
-    faqs: [{ q: 'Does sanitizing alter document appearance?', a: 'No. Visual page contents remain unchanged, but all invisible tracking metadata tags are stripped.' }]
+    faqs: [{ q: 'What should I review before sharing?', a: 'Check visible text, annotations, embedded files, and metadata inside images. This tool removes document-level metadata.' }]
   },
   redact: {
     id: 'redact', slug: 'redact-pdf', title: 'Redact & Blackout', actionText: 'Blackout sensitive areas',
-    summary: 'Blackout sensitive text & confidential zones', icon: redactIcon,
-    hint: 'Place solid blackout bars across headers, footers, or sensitive page sections with automated metadata scrubbing.',
+    summary: 'Black out a fixed band near the top of selected pages', icon: redactIcon,
+    hint: 'Cover a fixed band 36 PDF points below the top edge of selected pages. Every output page becomes an image, losing selectable text, links, forms, and annotations. Supports up to 50 pages.',
     steps: [
-      { title: 'Select PDF', desc: 'Pick the confidential document to redact.' },
-      { title: 'Choose Pages & Label', desc: 'Specify page range and optional overlay text like [CONFIDENTIAL].' },
-      { title: 'Blackout & Sanitize', desc: 'Applies permanent visual blackout bars and scrubs metadata.' }
+      { title: 'Select PDF', desc: 'Choose a document with up to 50 pages.' },
+      { title: 'Choose pages and label', desc: 'Select the pages whose top band should be covered. Optionally enter a label.' },
+      { title: 'Save and review', desc: 'Save the image-based PDF and check that the band covers the intended information.' }
     ],
     features: [
-      'Draws permanent blackout barriers across designated coordinates.',
-      'Automatically scrubs tracking metadata and revision history.',
-      'Ideal for legal submissions, FOIA disclosures, and customer privacy.'
+      'Burns the blackout into rendered page pixels before creating the PDF.',
+      'Creates a new PDF from page images with document metadata removed.',
+      'Preserves page order and displayed dimensions.'
     ],
-    faqs: [{ q: 'Can blacked-out areas be uncovered?', a: 'No. Visual blackout shapes are written into the PDF stream alongside metadata erasure.' }]
+    faqs: [{ q: 'Does the output retain the text underneath the band?', a: 'The output embeds only the final page images. Covered pixels replace the original content. Check the placement before sharing. Custom region selection is future work.' }]
+
   }
 };
 
