@@ -278,11 +278,36 @@ app.innerHTML = `
   </div>
 </dialog>
 
-<dialog id="install-dialog" aria-labelledby="install-title">
-  <h2 id="install-title">Install docSpace</h2>
-  <p><strong>Android:</strong> In Chrome, open the menu and choose Install app or Add to Home screen.</p>
-  <p><strong>iPhone and iPad:</strong> In Safari, tap Share, then Add to Home Screen. Turn on Open as Web App if shown.</p>
-  <form method="dialog" class="dialog-actions"><button class="primary">Done</button></form>
+<dialog id="install-dialog" aria-labelledby="install-title" aria-describedby="install-description">
+  <div class="install-heading">
+    <img src="/icons/icon-192.png" alt="" width="56" height="56">
+    <div>
+      <h2 id="install-title">Install docSpace</h2>
+      <p id="install-description">Your document tools, one tap away.</p>
+    </div>
+  </div>
+  <p class="install-summary">Add docSpace to your home screen or desktop. Your files are processed on your device, and cached tools work offline.</p>
+  <p id="install-status" role="status" aria-live="polite"></p>
+  <div id="install-instructions">
+    <ol data-install-platform="android" hidden>
+      <li>Open this page in Chrome on your Android phone.</li>
+      <li>Tap the browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+      <li>Confirm to add docSpace to your home screen.</li>
+    </ol>
+    <ol data-install-platform="ios" hidden>
+      <li>Open this page in Safari.</li>
+      <li>Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</li>
+      <li>Keep <strong>Open as Web App</strong> enabled if shown, then tap <strong>Add</strong>.</li>
+    </ol>
+    <div data-install-platform="desktop" hidden>
+      <p>In Chrome or Edge, open the browser menu and choose <strong>Install docSpace</strong> or <strong>Install page as app</strong>.</p>
+      <p>In Safari on Mac, choose <strong>File</strong>, then <strong>Add to Dock</strong>.</p>
+    </div>
+  </div>
+  <div class="dialog-actions">
+    <form method="dialog"><button class="outline">Done</button></form>
+    <button class="primary" id="install-native" type="button" hidden>${iconMarkup(icons.smartphone)} Install now</button>
+  </div>
 </dialog>
 
 <dialog id="legal-dialog">
@@ -925,7 +950,10 @@ updateLandingContent();
 syncUrlAndMetadata(mode);
 
 bindTheme($('theme'), () => {});
-$('install-dialog').addEventListener('close', () => $('install').focus());
+$('install-dialog').addEventListener('close', () => {
+  const target = $('install').hidden ? document.querySelector('.brand') : $('install');
+  target.focus();
+});
 bindInstall($('install'), $('install-dialog'));
 
 if (hasAccount) initAccount().catch(() => {

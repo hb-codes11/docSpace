@@ -399,3 +399,60 @@ dialog label { display: block; margin-block: 16px 6px; }
     flex-wrap: wrap;
   }
 }
+
+.install-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.install-heading img {
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+.install-heading h2 {
+  margin-bottom: 5px;
+  font-size: 25px;
+}
+.install-heading p {
+  margin: 0;
+}
+.install-summary {
+  margin-block: 24px 16px;
+}
+#install-status {
+  margin-block: 16px;
+  color: var(--accent);
+  font-weight: 500;
+}
+#install-instructions {
+  padding: 16px;
+  background: var(--surface-soft);
+  border-radius: 10px;
+}
+#install-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+#install-instructions li + li {
+  margin-top: 10px;
+}
+#install-instructions p {
+  margin: 0;
+}
+#install-instructions p + p {
+  margin-top: 12px;
+}
+#install-instructions strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+@media (max-width: 380px) {
+  #install-dialog {
+    padding: 20px;
+  }
+  .install-heading h2 {
+    font-size: 22px;
+  }
+}
