@@ -239,6 +239,17 @@ test('crops and rotates a scanner page before PDF export', async ({ page }) => {
   await page.locator('#picker').setInputFiles({ name: 'angled-page.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
   await page.getByRole('button', { name: 'Edit page 1' }).click();
   const dialog = page.getByRole('dialog', { name: 'Crop and straighten' });
+  const firstCorner = dialog.getByRole('button', { name: 'Top left corner' });
+  await firstCorner.waitFor();
+  const handle = await firstCorner.boundingBox();
+  expect(handle.width).toBeGreaterThanOrEqual(44);
+  const initialCorner = await firstCorner.getAttribute('style');
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2 + 24, handle.y + handle.height / 2 + 24);
+  await page.mouse.up();
+  expect(await firstCorner.getAttribute('style')).not.toBe(initialCorner);
+  await dialog.getByRole('button', { name: 'Reset', exact: true }).click();
   for (const [name, direction, times] of [
     ['Top left corner', 'Right', 5], ['Top left corner', 'Down', 4],
     ['Top right corner', 'Left', 5], ['Top right corner', 'Down', 4],
@@ -342,3 +353,162 @@ test('signs, sanitizes, and redacts a confidential document', async ({ page }) =
   expect(inspected.coveredPixel).toEqual([20, 20, 31, 255]);
 });
 
+
+test('keeps every tool reachable with consistent icons on a narrow phone', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 812 });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  const toolButtons = page.locator('.tools [data-mode]');
+  const modes = await toolButtons.evaluateAll(buttons => buttons.map(button => button.dataset.mode));
+  expect(modes).toHaveLength(14);
+  for (const mode of modes) {
+    const button = page.locator(`[data-mode="${mode}"]`);
+    await button.click();
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
+    const bounds = await button.boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(320);
+    await expect(button.locator('svg')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('#tool-title')).toHaveText(await button.getAttribute('aria-label'));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+  }
+  await page.getByRole('button', { name: 'Install app', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Install docSpace' })).toBeVisible();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.getByRole('link', { name: 'Privacy Policy', exact: true }).click();
+  await expect(page.locator('#legal-dialog')).toBeVisible();
+  await page.locator('#close-legal').click();
+  expect(errors).toEqual([]);
+});
+
+test('exports JPG images and recovers from an invalid file and page range', async ({ page }) => {
+  await page.goto('/#/pdf-to-images');
+  await page.locator('#picker').setInputFiles({ name: 'invalid.pdf', mimeType: 'application/pdf', buffer: Buffer.from('Not a PDF') });
+  await page.locator('#process').click();
+  await expect(page.locator('#status')).toHaveClass(/error/);
+  await expect(page.locator('#save-options')).toBeHidden();
+  await page.locator('#picker').setInputFiles(await fixture('valid.pdf', [300], 'JPEG output'));
+  await page.getByLabel('Pages to keep').fill('2');
+  await page.locator('#process').click();
+  await expect(page.locator('#status')).toContainText('within pages');
+  await page.getByLabel('Pages to keep').fill('1');
+  await page.getByLabel('Image format').selectOption('image/jpeg');
+  await page.locator('#process').click();
+  await page.getByLabel('Save as').fill('My export.zip.zip');
+  const zip = await JSZip.loadAsync(await result(page, 'My export.zip'));
+  expect(Object.keys(zip.files)).toEqual(['page-001.jpg']);
+  const jpg = await zip.file('page-001.jpg').async('nodebuffer');
+  expect([...jpg.subarray(0, 2)]).toEqual([255, 216]);
+});
+
+test.describe('cancellation', () => {
+  test.use({ serviceWorkers: 'block' });
+  test('discards a canceled export and allows a fresh attempt', async ({ page }) => {
+    let release;
+    let handled;
+    const requestHandled = new Promise(resolve => { handled = resolve; });
+    const gate = new Promise(resolve => { release = resolve; });
+    await page.route('**/assets/pdf-images-*.js', async route => {
+      await gate;
+      await route.continue();
+      handled();
+    });
+    await page.goto('/#/pdf-to-images');
+    await page.locator('#picker').setInputFiles(await fixture('valid.pdf', [300], 'Cancelable'));
+    await page.locator('#process').click();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(page.locator('#status')).toHaveText('Processing canceled.');
+    await expect(page.locator('#save-options')).toBeHidden();
+    release();
+    await requestHandled;
+    await page.unroute('**/assets/pdf-images-*.js');
+    await page.locator('#process').click();
+    await result(page, 'page-images.zip');
+  });
+});
+
+test('keeps signatures upright and at the displayed bottom right on rotated cropped pages', async ({ page }) => {
+  const { degrees } = await import('pdf-lib');
+  const source = await PDFDocument.create();
+  for (const angle of [0, 90, 180, 270]) {
+    const pdfPage = source.addPage([400, 500]);
+    pdfPage.setCropBox(20, 30, 340, 420);
+    pdfPage.setRotation(degrees(angle));
+  }
+  let buffer = Buffer.from(await source.save());
+  await page.goto('/#/sign-pdf');
+  for (let index = 0; index < 4; index++) {
+    await page.locator('#picker').setInputFiles({ name: 'rotated.pdf', mimeType: 'application/pdf', buffer });
+    if (index === 0) {
+      await page.locator('#signature-pad').scrollIntoViewIfNeeded();
+      const box = await page.locator('#signature-pad').boundingBox();
+      await page.mouse.move(box.x + 30, box.y + 40);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 180, box.y + 100, { steps: 6 });
+      await page.mouse.up();
+    }
+    await page.getByLabel('Page number', { exact: true }).fill(String(index + 1));
+    await page.locator('#process').click();
+    buffer = await result(page, 'signed.pdf');
+  }
+  await page.getByRole('button', { name: 'Split PDF', exact: true }).click();
+  await page.locator('#picker').setInputFiles({ name: 'signed.pdf', mimeType: 'application/pdf', buffer });
+  await expect(page.locator('#page-grid img[src]')).toHaveCount(4);
+  const moduleUrl = await page.evaluate(() => performance.getEntriesByType('resource').find(entry => /\/view-pdf-[^/]+\.js/.test(entry.name)).name);
+  const inkCounts = await page.evaluate(async ({ moduleUrl, data }) => {
+    const { withPdf, pageImage } = await import(moduleUrl);
+    const signal = new AbortController().signal;
+    return withPdf(new Uint8Array(data), signal, async pdf => {
+      const counts = [];
+      for (let index = 0; index < 4; index++) {
+        const blob = await pageImage(pdf, index, 840, signal);
+        const image = await createImageBitmap(blob);
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0);
+        image.close();
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let correct = 0;
+        let outside = 0;
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const i = (y * canvas.width + x) * 4;
+            if (pixels[i] > 100 || pixels[i + 1] > 100 || pixels[i + 2] > 100) continue;
+            if (x > canvas.width * .35 && y > canvas.height * .55) correct++;
+            else outside++;
+          }
+        }
+        counts.push({ correct, outside });
+      }
+      return counts;
+    });
+  }, { moduleUrl, data: [...buffer] });
+  for (const count of inkCounts) {
+    expect(count.correct).toBeGreaterThan(20);
+    expect(count.outside).toBe(0);
+  }
+});
+
+test('shares the renamed result through the browser file-sharing interface', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async ({ files }) => {
+        window.sharedDocument = { name: files[0].name, type: files[0].type, size: files[0].size };
+      },
+    });
+  });
+  await page.goto('/#/split-pdf');
+  await page.locator('#picker').setInputFiles(await fixture('source.pdf', [300]));
+  await page.locator('#process').click();
+  await page.getByLabel('Save as').fill('My notes.pdf');
+  await page.getByRole('button', { name: 'Share or save', exact: true }).click();
+  const shared = await page.evaluate(() => window.sharedDocument);
+  expect(shared.name).toBe('My notes.pdf');
+  expect(shared.type).toBe('application/pdf');
+  expect(shared.size).toBeGreaterThan(0);
+});

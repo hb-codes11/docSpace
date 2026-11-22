@@ -1,4 +1,4 @@
-import { PDFName } from 'pdf-lib';
+import { PDFName, degrees } from 'pdf-lib';
 
 export async function sanitizePdf(pdf) {
   // Remove both standard and custom document information, plus document XMP.
@@ -20,6 +20,10 @@ export async function signPdf(pdf, signatureDataUrl, pageIndex = 0, position = '
   }
   const page = pdf.getPage(targetIndex);
   const box = page.getCropBox();
+  const angle = ((page.getRotation().angle % 360) + 360) % 360;
+  const turned = angle === 90 || angle === 270;
+  const width = turned ? box.height : box.width;
+  const height = turned ? box.width : box.height;
 
   if (!signatureDataUrl || !signatureDataUrl.startsWith('data:image/png;base64,')) {
     throw new Error('Provide a valid handwritten signature drawing.');
@@ -33,30 +37,37 @@ export async function signPdf(pdf, signatureDataUrl, pageIndex = 0, position = '
   }
 
   const image = await pdf.embedPng(bytes);
-  const margin = Math.min(36, box.width * 0.1, box.height * 0.1);
-  const scale = Math.min(180 / image.width, (box.width - margin * 2) / image.width, (box.height - margin * 2) / image.height);
+  const margin = Math.min(36, width * 0.1, height * 0.1);
+  const scale = Math.min(180 / image.width, (width - margin * 2) / image.width, (height - margin * 2) / image.height);
   const targetWidth = image.width * scale;
   const targetHeight = image.height * scale;
 
-  let x = box.x + margin;
-  let y = box.y + margin;
+  let x = margin;
+  let y = margin;
 
   if (position === 'bottom-right') {
-    x = box.x + box.width - targetWidth - margin;
-    y = box.y + margin;
+    x = width - targetWidth - margin;
   } else if (position === 'bottom-center') {
-    x = box.x + (box.width - targetWidth) / 2;
-    y = box.y + margin;
+    x = (width - targetWidth) / 2;
   } else if (position === 'center') {
-    x = box.x + (box.width - targetWidth) / 2;
-    y = box.y + (box.height - targetHeight) / 2;
+    x = (width - targetWidth) / 2;
+    y = (height - targetHeight) / 2;
   }
 
+  // Map the displayed page coordinates back into the PDF's unrotated crop box.
+  const origins = {
+    0: [x, y],
+    90: [box.width - y, x],
+    180: [box.width - x, box.height - y],
+    270: [y, box.height - x],
+  };
+  const [originX, originY] = origins[angle];
   page.drawImage(image, {
-    x,
-    y,
+    x: box.x + originX,
+    y: box.y + originY,
     width: targetWidth,
     height: targetHeight,
+    rotate: degrees(angle),
   });
 
   return pdf.save();
