@@ -1,3 +1,4 @@
+import { icons, iconMarkup } from './icons.js';
 import { pageSelection } from './ranges.js';
 
 export function createPagePicker({ grid, feedback, range, onEdit }) {
@@ -79,15 +80,17 @@ export function createPagePicker({ grid, feedback, range, onEdit }) {
       const actions = document.createElement('div');
       actions.className = 'page-actions';
       const buttons = [
-        ['↑', 'Move earlier', () => move(page, position - 1), position === 0],
-        ['↓', 'Move later', () => move(page, position + 1), position === pages.length - 1],
-        ['↻', 'Rotate clockwise', () => { page.turn = (page.turn + 90) % 360; }, false],
-        ['×', 'Remove', () => { pages.splice(position, 1); }, pages.length === 1],
+        [icons.arrowUp, 'Move earlier', () => move(page, position - 1), position === 0],
+        [icons.arrowDown, 'Move later', () => move(page, position + 1), position === pages.length - 1],
+        [icons.rotate, 'Rotate clockwise', () => { page.turn = (page.turn + 90) % 360; }, false],
+        [icons.remove, 'Remove', () => { pages.splice(position, 1); }, pages.length === 1],
       ];
       for (const [symbol, action, run, unavailable] of buttons) {
         const button = document.createElement('button');
         button.className = 'icon-button';
-        button.textContent = symbol;
+        button.innerHTML = iconMarkup(symbol);
+        button.type = 'button';
+        button.title = action;
         button.dataset.action = action;
         button.setAttribute('aria-label', action + ' ' + label.toLowerCase());
         button.disabled = disabled || unavailable;

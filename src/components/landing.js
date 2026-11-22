@@ -1,3 +1,4 @@
+import { icons, iconMarkup } from '../icons.js';
 import { tools } from '../tools-data.js';
 
 export function renderToolLanding(tool) {
@@ -31,7 +32,7 @@ export function renderToolLanding(tool) {
           ${tool.faqs.map(faq => `
             <details class="faq-item">
               <summary class="faq-question">
-                <span>${faq.q}</span>
+                <span>${faq.q}</span>${iconMarkup(icons.chevron)}
               </summary>
               <div class="faq-answer">
                 <p>${faq.a}</p>
@@ -47,7 +48,7 @@ export function renderToolLanding(tool) {
         <div class="related-grid">
           ${otherTools.map(item => `
             <a href="/#/${item.slug}" class="related-card" data-switch-tool="${item.id}">
-              <span class="related-icon">${item.icon}</span>
+              <span class="related-icon">${iconMarkup(item.icon)}</span>
               <div class="related-info">
                 <strong>${item.title}</strong>
                 <span>${item.summary}</span>

@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 
 const publicFiles = [
   '/manifest.webmanifest',
+  '/icons/docspace.svg',
   '/icons/apple-touch-icon.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

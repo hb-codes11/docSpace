@@ -1,3 +1,4 @@
+import { icons, iconMarkup } from './icons.js';
 import { fullPage, validCrop } from './scan-geometry.js';
 import { readScanImage, renderScan } from './scan.js';
 
@@ -65,7 +66,7 @@ export async function editScanPage(dialog, url, initial, grayscale, onSave) {
     showingPreview = false;
     stage.hidden = !image;
     preview.hidden = true;
-    toggle.textContent = 'Preview';
+    toggle.innerHTML = iconMarkup(icons.preview) + '<span>Preview</span>';
     draw();
   }
 
@@ -80,7 +81,7 @@ export async function editScanPage(dialog, url, initial, grayscale, onSave) {
       stage.hidden = true;
       preview.replaceChildren(canvas);
       preview.hidden = false;
-      toggle.textContent = 'Edit corners';
+      toggle.innerHTML = iconMarkup(icons.edit) + '<span>Edit corners</span>';
       note.textContent = '';
     } catch (error) {
       if (!signal.aborted) {

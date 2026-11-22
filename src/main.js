@@ -7,6 +7,7 @@ import { privacyPolicyContent, termsOfServiceContent, aboutContent } from './com
 import { getInitialRoute, syncUrlAndMetadata } from './router.js';
 import { outputFilename } from './filenames.js';
 import { bindTheme, bindInstall } from './app-settings.js';
+import { icons, iconMarkup } from './icons.js';
 import { checkClientRateLimit } from './rate-limiter.js';
 
 import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
@@ -43,7 +44,7 @@ app.innerHTML = `
 <header class="top">
   <div class="shell top-inner">
     <a class="brand" href="/" aria-label="docSpace Home">
-      <span class="brand-icon">${mergeIcon}</span>
+      <span class="brand-icon">${iconMarkup(mergeIcon)}</span>
       <span class="brand-name">docSpace</span>
     </a>
     <nav class="top-nav" aria-label="Main Navigation">
@@ -57,7 +58,7 @@ app.innerHTML = `
         <option value="light">Light</option>
         <option value="dark">Dark</option>
       </select>
-      <button id="install" class="outline" type="button">Install app</button>
+      <button id="install" class="outline" type="button">${iconMarkup(icons.smartphone)} Install app</button>
       ${hasAccount ? '<button id="account" class="outline">Sign in</button>' : ''}
     </div>
   </div>
@@ -67,7 +68,7 @@ app.innerHTML = `
   <h1>A better space for<br>your documents.</h1>
   <div class="hero-intro">
     <p>Merge, scan, sign, and convert.<br> Your everyday paperwork, handled here.</p>
-    <span class="privacy-note">${shieldIcon} Files stay on your device</span>
+    <span class="privacy-note">${iconMarkup(shieldIcon)} Files stay on your device</span>
   </div>
 </section>
 
@@ -81,14 +82,14 @@ app.innerHTML = `
           ${group.ids.map(key => {
             const tool = tools[key];
             return `<button class="tool" data-mode="${key}" aria-pressed="${String(key === mode)}" aria-label="${tool.title}">
-              <span class="tool-icon">${tool.icon}</span>
+              <span class="tool-icon">${iconMarkup(tool.icon)}</span>
               <span class="tool-label">${tool.title}</span>
             </button>`;
           }).join('')}
         </div>
       `).join('')}
     </nav>
-    <p class="rail-note">${shieldIcon}<span>Private by design.<br>Processed on this device.</span></p>
+    <p class="rail-note">${iconMarkup(shieldIcon)}<span>Private by design.<br>Processed on this device.</span></p>
   </aside>
 
   <section class="workbench" aria-labelledby="tool-title">
@@ -102,7 +103,7 @@ app.innerHTML = `
       <strong id="drop-title">Drop PDF files here</strong>
       <span class="limit">Up to 100 MB and 500 pages per job</span>
       <div class="file-actions">
-        <button class="primary" id="take-photo" type="button" hidden>${cameraIcon} Take photo</button>
+        <button class="primary" id="take-photo" type="button" hidden>${iconMarkup(cameraIcon)} Take photo</button>
         <button class="primary" id="browse" type="button">Choose PDFs</button>
       </div>
       <input type="file" id="camera-picker" accept="image/*" capture="environment" hidden>
@@ -141,7 +142,7 @@ app.innerHTML = `
       <div class="signature-container">
         <canvas id="signature-pad" width="460" height="150"></canvas>
         <div class="signature-tools">
-          <button type="button" class="outline" id="clear-signature">Clear pad</button>
+          <button type="button" class="outline" id="clear-signature">${iconMarkup(icons.reset)} Clear pad</button>
         </div>
       </div>
       <div class="sign-meta-fields">
@@ -164,9 +165,9 @@ app.innerHTML = `
 
     <div class="result">
       <p id="status" role="status" aria-live="polite"></p>
-      <button class="outline" id="reload-tool" hidden>Reload docSpace</button>
+      <button class="outline" id="reload-tool" hidden>${iconMarkup(icons.reset)} Reload docSpace</button>
       <button class="primary" id="process" hidden></button>
-      <button class="outline" id="cancel" hidden>Cancel</button>
+      <button class="outline" id="cancel" hidden>${iconMarkup(icons.remove)} Cancel</button>
       <div id="save-options" hidden>
         <label for="output-name">Save as</label>
         <div class="save-actions">
@@ -175,13 +176,13 @@ app.innerHTML = `
             <span id="output-extension"></span>
           </div>
           <a class="primary" id="download">Download</a>
-          <button class="outline" id="share-file" type="button" hidden>Share or save</button>
+          <button class="outline" id="share-file" type="button" hidden>${iconMarkup(icons.share)} Share or save</button>
         </div>
       </div>
       <div id="continue-options" hidden>
         <label for="next-tool">Continue with this PDF</label>
         <select id="next-tool">${Object.values(tools).filter(tool => !tool.kind && tool.id !== 'merge').map(tool => `<option value="${tool.id}">${tool.title}</option>`).join('')}</select>
-        <button id="continue-tool" class="outline">Open tool</button>
+        <button id="continue-tool" class="outline">Open tool ${iconMarkup(icons.arrowRight)}</button>
       </div>
     </div>
   </section>
@@ -196,11 +197,11 @@ app.innerHTML = `
     <div class="footer-grid">
       <div class="footer-col">
         <a class="brand" href="/">
-          <span class="brand-icon">${mergeIcon}</span>
+          <span class="brand-icon">${iconMarkup(mergeIcon)}</span>
           <span class="brand-name">docSpace</span>
         </a>
         <p>A personal project for everyday PDF and Word work.</p>
-        <span class="private">${shieldIcon} Files processed on your device</span>
+        <span class="private">${iconMarkup(shieldIcon)} Files processed on your device</span>
       </div>
       <div class="footer-col">
         <h4>PDF Workflows</h4>
@@ -267,13 +268,13 @@ app.innerHTML = `
   <div class="scan-result-preview" aria-label="Straightened page preview" hidden></div>
   <p id="scan-editor-status" role="status"></p>
   <div class="scan-editor-controls">
-    <button id="scan-preview-toggle" class="outline" type="button">Preview</button>
-    <button id="scan-rotate" class="outline" type="button">Rotate 90°</button>
-    <button id="scan-reset" class="outline" type="button">Reset</button>
+    <button id="scan-preview-toggle" class="outline" type="button">${iconMarkup(icons.preview)} Preview</button>
+    <button id="scan-rotate" class="outline" type="button">${iconMarkup(icons.rotate)} Rotate 90°</button>
+    <button id="scan-reset" class="outline" type="button">${iconMarkup(icons.reset)} Reset</button>
   </div>
   <div class="dialog-actions">
     <form method="dialog"><button class="outline" autofocus>Cancel</button></form>
-    <button id="scan-edit-save" class="primary" type="button">Apply edits</button>
+    <button id="scan-edit-save" class="primary" type="button">${iconMarkup(icons.check)} Apply edits</button>
   </div>
 </dialog>
 
@@ -337,6 +338,7 @@ function clearResult() {
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
   result = undefined;
+  document.querySelector('.result').classList.remove('is-ready');
   $('save-options').hidden = true;
   $('continue-options').hidden = true;
   download.removeAttribute('href');
@@ -404,7 +406,7 @@ function render(focusIndex, action) {
   picker.multiple = Boolean(tool.multiple);
   picker.accept = tool.accept ?? '.pdf,application/pdf';
   const kind = tool.kind ?? (tool.multiple ? 'PDFs' : 'PDF');
-  $('browse').textContent = 'Choose ' + kind;
+  $('browse').innerHTML = iconMarkup(icons.plus) + '<span>Choose ' + kind + '</span>';
   $('drop-title').textContent = mode === 'scan' ? 'Add a photo for each page' : 'Drop ' + kind + ' here';
   $('browse').disabled = Boolean(job);
   $('browse').className = mode === 'scan' ? 'outline' : 'primary';
@@ -412,10 +414,16 @@ function render(focusIndex, action) {
   $('take-photo').disabled = Boolean(job);
   $('scan-options').hidden = mode !== 'scan' || !files.length;
   $('grayscale').disabled = Boolean(job);
-  $('process').textContent = tool.actionText ?? (mode === 'word' ? 'Export editable text' : tool.title);
+  $('process').innerHTML = iconMarkup(tool.icon) + '<span>' + (tool.actionText ?? tool.title) + '</span>';
   $('process').hidden = !files.length || Boolean(job);
   updateProcessButton();
   $('cancel').hidden = !job;
+  drop.classList.toggle('has-files', files.length > 0);
+  drop.setAttribute('aria-busy', String(Boolean(job)));
+  const limits = ['export', 'compress', 'redact'].includes(mode)
+    ? 'Up to 100 MB · 50 pages per export'
+    : tool.kind ? 'Up to 50 images · 100 MB total' : 'Up to 100 MB · 500 pages per job';
+  drop.querySelector('.limit').textContent = mode === 'docx' ? 'One DOCX file · up to 100 MB' : limits;
   $('split-options').hidden = !['split', 'export', 'watermark', 'numbers', 'redact'].includes(mode) || !files.length;
   $('zip-option').hidden = mode !== 'split';
   $('image-options').hidden = mode !== 'export' || !files.length;
@@ -438,6 +446,15 @@ function render(focusIndex, action) {
   for (const button of document.querySelectorAll('[data-mode]')) {
     button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
     button.disabled = Boolean(job);
+  }
+  const navigation = document.querySelector('.tools');
+  if (navigation.scrollWidth > navigation.clientWidth) {
+    const active = navigation.querySelector('[aria-pressed="true"]');
+    const bounds = navigation.getBoundingClientRect();
+    const selected = active.getBoundingClientRect();
+    if (selected.left < bounds.left || selected.right > bounds.right) {
+      navigation.scrollLeft += selected.left - bounds.left;
+    }
   }
 
   queue.hidden = !files.length;
@@ -463,7 +480,22 @@ function render(focusIndex, action) {
       preview.src = scanPreviews.get(file);
       row.append(preview);
     }
-    row.append(name);
+    const details = document.createElement('div');
+    details.className = 'file-details';
+    const meta = document.createElement('span');
+    meta.className = 'file-meta';
+    const size = file.size >= 1024 * 1024
+      ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
+      : Math.max(1, Math.ceil(file.size / 1024)) + ' KB';
+    meta.textContent = (mode === 'scan' ? 'Page ' + (index + 1) + ' · ' : '') + size;
+    details.append(name, meta);
+    if (mode !== 'scan') {
+      const fileIcon = document.createElement('span');
+      fileIcon.className = 'queue-file-icon';
+      fileIcon.innerHTML = iconMarkup(tool.kind === 'images' ? icons.image : icons.file);
+      row.append(fileIcon);
+    }
+    row.append(details);
     const actions = document.createElement('div');
     actions.className = 'actions';
 
@@ -490,7 +522,8 @@ function render(focusIndex, action) {
       const edit = document.createElement('button');
       edit.type = 'button';
       edit.className = 'outline scan-edit-button';
-      edit.textContent = 'Edit';
+      edit.innerHTML = iconMarkup(icons.edit) + '<span>Edit</span>';
+      edit.title = 'Crop and straighten page ' + (index + 1);
       edit.setAttribute('aria-label', 'Edit page ' + (index + 1));
       edit.disabled = Boolean(job);
       edit.onclick = async () => {
@@ -501,23 +534,25 @@ function render(focusIndex, action) {
           await editScanPage(dialog, scanPreviews.get(file), scanEdits.get(file), $('grayscale').checked, edited => {
             scanEdits.set(file, edited);
             clearResult();
-            edit.textContent = edited.corners || edited.rotation ? 'Edited' : 'Edit';
+            edit.innerHTML = iconMarkup(edited.corners || edited.rotation ? icons.check : icons.edit) + '<span>' + (edited.corners || edited.rotation ? 'Edited' : 'Edit') + '</span>';
           });
         } catch {
           report('The scan editor could not load. Reload docSpace and try again.', true);
         }
       };
       const saved = scanEdits.get(file);
-      if (saved?.corners || saved?.rotation) edit.textContent = 'Edited';
+      if (saved?.corners || saved?.rotation) edit.innerHTML = iconMarkup(icons.check) + '<span>Edited</span>';
       actions.append(edit);
     }
 
-    const buttons = tool.multiple ? [['↑', 'Move up', -1], ['↓', 'Move down', 1]] : [];
-    buttons.push(['×', 'Remove', 0]);
+    const buttons = tool.multiple ? [[icons.arrowUp, 'Move up', -1], [icons.arrowDown, 'Move down', 1]] : [];
+    buttons.push([icons.remove, 'Remove', 0]);
     for (const [symbol, label, move] of buttons) {
       const button = document.createElement('button');
       button.className = 'icon-button';
-      button.textContent = symbol;
+      button.innerHTML = iconMarkup(symbol);
+      button.type = 'button';
+      button.title = label;
       button.dataset.action = label;
       button.setAttribute('aria-label', `${label} ${file.name}`);
       button.disabled = Boolean(job) || index + move < 0 || index + move >= files.length;
@@ -587,6 +622,7 @@ function finish(data) {
   $('save-options').hidden = false;
   $('continue-options').hidden = data.blob.type !== 'application/pdf';
   $('share-file').hidden = !navigator.canShare?.({ files: [namedResult()] });
+  document.querySelector('.result').classList.add('is-ready');
   report('Your download is ready.');
   outputName.focus();
   outputName.select();
@@ -601,7 +637,7 @@ function syncOutputName() {
   if (!result) return;
   const name = outputFilename(outputName.value, result.filename);
   download.download = name;
-  download.textContent = 'Download';
+  download.innerHTML = iconMarkup(icons.download) + '<span>Download</span>';
   download.setAttribute('aria-label', 'Download ' + name);
 }
 
