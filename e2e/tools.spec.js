@@ -506,7 +506,7 @@ test('shares the renamed result through the browser file-sharing interface', asy
   await page.locator('#picker').setInputFiles(await fixture('source.pdf', [300]));
   await page.locator('#process').click();
   await page.getByLabel('Save as').fill('My notes.pdf');
-  await page.getByRole('button', { name: 'Share or save', exact: true }).click();
+  await page.getByRole('button', { name: 'Share file', exact: true }).click();
   const shared = await page.evaluate(() => window.sharedDocument);
   expect(shared.name).toBe('My notes.pdf');
   expect(shared.type).toBe('application/pdf');
