@@ -94,7 +94,14 @@ export function bindDelivery({ getResult, getFile, download, nameInput, browse }
     report('Choose where to save your file.');
     try {
       const name = await saveFile(file);
-      if (isCurrent(action)) report('Saved as ' + name + '.');
+      if (isCurrent(action)) {
+        const extension = file.name.slice(file.name.lastIndexOf('.'));
+        if (name.toLowerCase().endsWith(extension.toLowerCase())) {
+          nameInput.value = name.slice(0, -extension.length);
+          nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        report('Saved as ' + name + '.');
+      }
     } catch (error) {
       if (isCurrent(action)) {
         report(error.name === 'AbortError' ? 'Save canceled. Your file is still ready.' : 'Could not save to that folder. Try Download.', error.name !== 'AbortError');
