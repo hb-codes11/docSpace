@@ -1,4 +1,8 @@
-import "./TechText.css";
+'use client';
+
+import React, { useEffect, useRef } from 'react';
+
+import './TechText.css';
 
 const LABEL_FONT = '10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 const FALLOFF_STEPS = 8;
@@ -29,55 +33,76 @@ const noise = (...values) => {
 
 const signed = value => (value > 0 ? `+${value}` : value < 0 ? `−${-value}` : '0');
 
-export function initTechText(container, options = {}) {
-  if (!container) return;
+const TechText = ({
+  text = 'React Bits',
+  fontFamily = '',
+  fontWeight = 600,
+  fontSize = 150,
+  letterSpacing = -0.05,
+  color = 'currentColor',
+  accentColor = 'currentColor',
+  align = 'center',
+  reach = 200,
+  softness = 0.7,
+  dashLength = 4,
+  dashGap = 2,
+  strokeWidth = 1.5,
+  lineStyle = 'dashed',
+  reveal = 'letter',
+  specks = 15,
+  selection = true,
+  labels = true,
+  draggable = true,
+  bounce = 0.4,
+  sweep = true,
+  speed = 1,
+  clickKick = true,
+  intro = 'none',
+  introDuration = 2,
+  guides = false,
+  className = '',
+  style
+}) => {
+  const containerRef = useRef(null);
+  const canvasRef = useRef(null);
+  const settingsRef = useRef(null);
+  const wakeRef = useRef(() => {});
 
-  container.classList.add("tech-text");
-  if (options.className) container.classList.add(...options.className.split(" ").filter(Boolean));
-  container.setAttribute("role", "img");
-  container.setAttribute("aria-label", options.text || "docSpace");
+  useEffect(() => {
+    settingsRef.current = {
+      text,
+      fontFamily,
+      fontWeight,
+      fontSize,
+      letterSpacing,
+      color,
+      accentColor,
+      align,
+      reach,
+      softness,
+      dashLength,
+      dashGap,
+      strokeWidth,
+      lineStyle,
+      reveal,
+      specks,
+      selection,
+      labels,
+      draggable,
+      bounce,
+      sweep,
+      speed,
+      clickKick,
+      intro,
+      introDuration,
+      guides
+    };
+    wakeRef.current();
+  });
 
-  let canvas = container.querySelector(".tech-text-canvas");
-  if (!canvas) {
-    canvas = document.createElement("canvas");
-    canvas.className = "tech-text-canvas";
-    container.appendChild(canvas);
-  }
-
-  const defaultSettings = {
-    text: "docSpace",
-    fontFamily: "",
-    fontWeight: 800,
-    fontSize: 90,
-    letterSpacing: -0.05,
-    color: "currentColor",
-    accentColor: "#7c3aed",
-    align: "left",
-    reach: 160,
-    softness: 0.7,
-    dashLength: 4,
-    dashGap: 2,
-    strokeWidth: 1.5,
-    lineStyle: "dashed",
-    reveal: "letter",
-    specks: 12,
-    selection: true,
-    labels: true,
-    draggable: true,
-    bounce: 0.4,
-    sweep: true,
-    speed: 1,
-    clickKick: true,
-    intro: "none",
-    introDuration: 2,
-    guides: false
-  };
-
-  const settingsRef = { current: { ...defaultSettings, ...options } };
-  const wakeRef = { current: () => {} };
-
-  // container provided
-    // canvas provided
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     const scratch = document.createElement('canvas');
     const scratchCtx = scratch.getContext('2d');
@@ -114,14 +139,14 @@ export function initTechText(container, options = {}) {
     const lens = { x: 0, y: 0 };
     const frame = { x1: 0, y1: 0, x2: 0, y2: 0, alpha: 0, index: -1 };
 
-    const refreshFonts = () => {
+    const invalidateLayout = () => {
       layoutKey = '';
       wakeRef.current();
     };
 
     const fontsLoaded = () => {
       fontsReady = true;
-      refreshFonts();
+      invalidateLayout();
     };
 
     const family = s => s.fontFamily || getComputedStyle(container).fontFamily || 'sans-serif';
@@ -147,6 +172,7 @@ export function initTechText(container, options = {}) {
       const w = glyph.box.x2 - glyph.box.x1 + pad * 2;
       const h = glyph.box.y2 - glyph.box.y1 + pad * 2;
       const image = document.createElement('canvas');
+      image.addEventListener('contextrestored', invalidateLayout);
       image.width = Math.max(1, Math.ceil(w * dpr));
       image.height = Math.max(1, Math.ceil(h * dpr));
       const c = image.getContext('2d');
@@ -194,7 +220,7 @@ export function initTechText(container, options = {}) {
       const wanted = fontFor(s, 64);
       if (document.fonts && wanted !== requestedFont) {
         requestedFont = wanted;
-        document.fonts.load(wanted, s.text).then(refreshFonts, refreshFonts);
+        document.fonts.load(wanted, s.text).then(invalidateLayout, invalidateLayout);
       }
 
       const probe = scratchCtx;
@@ -929,6 +955,7 @@ export function initTechText(container, options = {}) {
     container.addEventListener('pointerup', onUp, { passive: true });
     container.addEventListener('pointercancel', onUp, { passive: true });
     container.addEventListener('pointerleave', onLeave, { passive: true });
+    canvas.addEventListener('contextrestored', invalidateLayout);
 
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(container);
@@ -948,7 +975,7 @@ export function initTechText(container, options = {}) {
 
     resize();
 
-    const destroy = () => {
+    return () => {
       alive = false;
       cancelAnimationFrame(raf);
       wakeRef.current = () => {};
@@ -964,13 +991,15 @@ export function initTechText(container, options = {}) {
       container.removeEventListener('pointerup', onUp);
       container.removeEventListener('pointercancel', onUp);
       container.removeEventListener('pointerleave', onLeave);
-    }
+      canvas.removeEventListener('contextrestored', invalidateLayout);
+    };
+  }, []);
 
-  return {
-    destroy,
-    update(newOptions) {
-      Object.assign(settingsRef.current, newOptions);
-      wakeRef.current();
-    }
-  };
-}
+  return (
+    <div ref={containerRef} className={`tech-text ${className}`.trim()} style={style} role="img" aria-label={text}>
+      <canvas ref={canvasRef} className="tech-text-canvas" />
+    </div>
+  );
+};
+
+export default TechText;

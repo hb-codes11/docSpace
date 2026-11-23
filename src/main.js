@@ -8,6 +8,7 @@ import { getInitialRoute, syncUrlAndMetadata } from './router.js';
 import { outputFilename } from './filenames.js';
 import { bindTheme, bindInstall } from './app-settings.js';
 import { icons, iconMarkup } from './icons.js';
+import { mountInteractions } from './components/interactions.jsx';
 import { checkClientRateLimit } from './rate-limiter.js';
 
 import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
@@ -32,6 +33,9 @@ let account;
 let session;
 let userSelectedTool = false;
 let draggedFile;
+let interactions;
+let clearSnapshot;
+let clearEpoch = 0;
 
 const toolGroups = [
   { title: 'Pages', ids: ['merge', 'split', 'organize', 'numbers', 'watermark'] },
@@ -53,19 +57,23 @@ app.innerHTML = `
       <a href="#about" class="nav-link" id="nav-about">About</a>
     </nav>
     <div class="top-actions">
-      <select id="theme" aria-label="Color theme">
+      <select id="theme" aria-label="Color theme" hidden>
         <option value="system">System</option>
         <option value="light">Light</option>
         <option value="dark">Dark</option>
       </select>
-      <button id="install" class="outline" type="button">${iconMarkup(icons.smartphone)} Install app</button>
+      <div id="theme-controls"></div>
+      <button id="install" class="outline" type="button" aria-label="Install app" title="Install app">${iconMarkup(icons.smartphone)}<span class="install-label">Install app</span></button>
       ${hasAccount ? '<button id="account" class="outline">Sign in</button>' : ''}
     </div>
   </div>
 </header>
 
 <section class="shell hero" id="tools-section">
-  <h1>A better space for<br>your documents.</h1>
+  <div class="hero-brand">
+    <h1 class="sr-only">docSpace — PDF and document tools</h1>
+    <div id="hero-wordmark" aria-hidden="true"></div>
+  </div>
   <div class="hero-intro">
     <p>Merge, scan, sign, and convert.<br> Your everyday paperwork, handled here.</p>
     <span class="privacy-note">${iconMarkup(shieldIcon)} Files stay on your device</span>
@@ -110,6 +118,10 @@ app.innerHTML = `
       <input type="file" id="picker" accept=".pdf,application/pdf" hidden>
     </div>
 
+    <div id="queue-toolbar" class="queue-toolbar" hidden>
+      <span id="queue-summary"></span>
+      <div id="clear-files-control"></div>
+    </div>
     <ol id="queue" aria-label="Selected files" hidden></ol>
     <label id="scan-options" class="check" hidden><input id="grayscale" type="checkbox"> Grayscale</label>
 
@@ -123,8 +135,9 @@ app.innerHTML = `
     </div>
 
     <div id="image-options" hidden>
-      <label for="image-format">Image format</label>
-      <select id="image-format">
+      <span id="image-format-label">Image format</span>
+      <div id="image-format-control"></div>
+      <select id="image-format" aria-label="Image format" hidden>
         <option value="image/png">PNG</option>
         <option value="image/jpeg">JPG</option>
       </select>
@@ -349,9 +362,9 @@ $('link-privacy')?.addEventListener('click', e => { e.preventDefault(); openLega
 $('link-terms')?.addEventListener('click', e => { e.preventDefault(); openLegalModal(termsOfServiceContent); });
 $('link-about')?.addEventListener('click', e => { e.preventDefault(); openLegalModal(aboutContent); });
 
-function resetPagePicker() {
+function resetPagePicker(restoredEdits) {
   const preview = ['split', 'organize', 'export'].includes(mode);
-  pagePicker.load(preview ? files[0] : undefined, mode === 'organize');
+  pagePicker.load(preview ? files[0] : undefined, mode === 'organize', restoredEdits);
 }
 
 function updateProcessButton() {
@@ -380,6 +393,8 @@ function report(message, error = false) {
 function chooseTool(value, navigate = true) {
   if (!Object.hasOwn(tools, value) || value === mode || job) return;
   if (tools[mode].kind !== tools[value].kind) files = [];
+  clearSnapshot = undefined;
+  clearEpoch++;
   mode = value;
   if (!tools[mode].multiple) files = files.slice(0, 1);
   $('pages').value = '';
@@ -482,6 +497,9 @@ function render(focusIndex, action) {
     }
   }
 
+  $('queue-toolbar').hidden = !files.length && !clearSnapshot;
+  $('queue-summary').textContent = clearSnapshot ? 'Files cleared' : files.length + (files.length === 1 ? ' file selected' : ' files selected');
+  interactions?.update({ busy: Boolean(job), canClear: files.length > 0 || Boolean(clearSnapshot), resetKey: clearEpoch });
   queue.hidden = !files.length;
   queue.replaceChildren();
   for (const [file, url] of scanPreviews) {
@@ -617,8 +635,35 @@ function addFiles(incoming) {
     report('Choose up to 50 files totaling 100 MB or less.', true);
     return;
   }
+  clearSnapshot = undefined;
+  clearEpoch++;
   files = next;
   resetPagePicker();
+  render();
+}
+
+function clearFiles() {
+  if (job || !files.length) return;
+  clearSnapshot = { files: [...files], edits: new Map(scanEdits), pages: pagePicker.getEdits() };
+  files = [];
+  resetPagePicker();
+  clearResult();
+  render();
+}
+
+function undoClear() {
+  if (job || !clearSnapshot || files.length) return;
+  files = clearSnapshot.files;
+  const restoredPages = clearSnapshot.pages;
+  for (const [file, edit] of clearSnapshot.edits) scanEdits.set(file, edit);
+  clearSnapshot = undefined;
+  resetPagePicker(restoredPages);
+  clearResult();
+  render();
+}
+
+function expireClear() {
+  clearSnapshot = undefined;
   render();
 }
 
@@ -950,6 +995,14 @@ updateLandingContent();
 syncUrlAndMetadata(mode);
 
 bindTheme($('theme'), () => {});
+interactions = mountInteractions({
+  themeSelect: $('theme'),
+  imageSelect: $('image-format'),
+  clearFiles,
+  undoClear,
+  expireClear,
+});
+interactions.update({ busy: Boolean(job), canClear: files.length > 0, resetKey: clearEpoch });
 $('install-dialog').addEventListener('close', () => {
   const target = $('install').hidden ? document.querySelector('.brand') : $('install');
   target.focus();

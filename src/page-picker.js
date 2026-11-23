@@ -118,7 +118,7 @@ export function createPagePicker({ grid, feedback, range, onEdit }) {
     pages.splice(position, 0, page);
   }
 
-  async function load(file, editMode) {
+  async function load(file, editMode, restoredEdits) {
     reset();
     organizing = editMode;
     if (!file) return;
@@ -128,7 +128,9 @@ export function createPagePicker({ grid, feedback, range, onEdit }) {
     try {
       const [{ withPdf, pageImage }, bytes] = await Promise.all([import('./view-pdf.js'), file.arrayBuffer()]);
       await withPdf(bytes, signal, async pdf => {
-        pages = Array.from({ length: pdf.numPages }, (_, index) => ({ index, turn: 0 }));
+        pages = organizing && restoredEdits?.length
+          ? restoredEdits.map(page => ({ ...page }))
+          : Array.from({ length: pdf.numPages }, (_, index) => ({ index, turn: 0 }));
         render();
         onEdit(true);
         feedback.textContent = organizing ? 'Drag pages to reorder them, or use the arrow buttons.' : 'Select pages or enter a range. An empty range exports all pages.';

@@ -41,5 +41,14 @@ function offlineApp() {
 export default defineConfig({
   plugins: [offlineApp()],
   worker: { format: 'es' },
-  build: { target: 'es2022' },
+  build: {
+    target: 'es2022',
+    rolldownOptions: {
+      onwarn(warning, warn) {
+        // This app runs entirely in the browser, without React server boundaries.
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE' && warning.message.includes('use client')) return;
+        warn(warning);
+      },
+    },
+  },
 });
