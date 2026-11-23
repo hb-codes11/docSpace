@@ -10,7 +10,7 @@
 
 - **Your files stay on your device.** The tools work in the browser and are available without signing in.
 - **Scan from your phone.** Capture pages with the rear camera or choose photos, review their order, and create an A4 PDF. Open **Edit** on each page to adjust its corners, correct perspective, rotate it, or preview the result.
-- **Name each download.** Enter a filename in **Save as**. The app keeps the correct extension for PDF, DOCX, and ZIP results.
+- **Save and share your result.** Enter a filename in **Save as**, then download it, choose a save location where supported, or send the generated file through your device’s share sheet. PDF, DOCX, and ZIP extensions stay correct.
 - **Work with pages visually.** Select thumbnails, drag pages into order, or enter a range like `1-3, 7`.
 - **Pick up where the last tool finished.** **Continue with this PDF** carries the output into another tool. The workspace adapts to desktop and mobile.
 
@@ -79,7 +79,7 @@ Open the HTTPS site on your phone. On **Android Chrome**, tap **Install app** in
 
 Visit once online to cache the app. Local tools can then open offline after caching completes. Sign-in and account sync require a connection. The app caches its code, styles, and icons. Scanned pages and other documents stay in memory until you save them.
 
-Use **Color theme** to follow your device setting or choose Light or Dark. **Share or save** appears on browsers that support sharing the generated file to system apps such as Files.
+Use the sun and moon controls to choose Light or Dark, or the monitor control to follow your device theme. **Save file** opens a filename and folder picker in supporting browsers. **Download** remains available, and **Share file** opens the device share sheet where file sharing is supported. Other browsers show download-and-attach instructions.
 
 ## Deploy to Netlify
 

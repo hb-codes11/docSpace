@@ -5,6 +5,7 @@ import { tools } from './tools-data.js';
 import { renderToolLanding } from './components/landing.js';
 import { privacyPolicyContent, termsOfServiceContent, aboutContent } from './components/legal.js';
 import { getInitialRoute, syncUrlAndMetadata } from './router.js';
+import { bindDelivery, formatFileSize } from './delivery.js';
 import { outputFilename } from './filenames.js';
 import { bindTheme, bindInstall } from './app-settings.js';
 import { icons, iconMarkup } from './icons.js';
@@ -181,17 +182,27 @@ app.innerHTML = `
       <button class="outline" id="reload-tool" hidden>${iconMarkup(icons.reset)} Reload docSpace</button>
       <button class="primary" id="process" hidden></button>
       <button class="outline" id="cancel" hidden>${iconMarkup(icons.remove)} Cancel</button>
-      <div id="save-options" hidden>
-        <label for="output-name">Save as</label>
-        <div class="save-actions">
-          <div class="name-field">
-            <input id="output-name" type="text" maxlength="120" spellcheck="false" autocapitalize="none" autocomplete="off" aria-describedby="output-extension">
-            <span id="output-extension"></span>
+      <section id="save-options" aria-labelledby="delivery-title" hidden>
+        <div class="delivery-heading">
+          <span class="delivery-file-icon" id="delivery-file-icon" aria-hidden="true">${iconMarkup(icons.file)}</span>
+          <div>
+            <h3 id="delivery-title">Save your document</h3>
+            <p class="delivery-meta"><span id="delivery-type"></span><span id="delivery-size"></span></p>
           </div>
-          <a class="primary" id="download">Download</a>
-          <button class="outline" id="share-file" type="button" hidden>${iconMarkup(icons.share)} Share or save</button>
+          <span class="delivery-ready" aria-hidden="true">${iconMarkup(icons.check)}</span>
         </div>
-      </div>
+        <label for="output-name">Save as</label>
+        <div class="delivery-name">
+          <input id="output-name" type="text" maxlength="120" spellcheck="false" autocapitalize="none" autocomplete="off" aria-describedby="output-extension">
+          <span id="output-extension"></span>
+        </div>
+        <div class="delivery-actions">
+          <button class="primary" id="save-file" type="button" title="Choose a filename and folder" hidden>${iconMarkup(icons.save)} Save file</button>
+          <a class="primary" id="download">${iconMarkup(icons.download)} Download</a>
+          <button class="outline" id="share-file" type="button">${iconMarkup(icons.share)} Share file</button>
+        </div>
+        <p id="delivery-status" role="status" aria-live="polite"></p>
+      </section>
       <div id="continue-options" hidden>
         <label for="next-tool">Continue with this PDF</label>
         <select id="next-tool">${Object.values(tools).filter(tool => !tool.kind && tool.id !== 'merge').map(tool => `<option value="${tool.id}">${tool.title}</option>`).join('')}</select>
@@ -323,6 +334,20 @@ app.innerHTML = `
   </div>
 </dialog>
 
+<dialog id="share-dialog" aria-labelledby="share-title" aria-describedby="share-help">
+  <div class="share-heading">${iconMarkup(icons.share)}<h2 id="share-title">Share your file</h2></div>
+  <p id="share-filename"></p>
+  <p id="share-help"></p>
+  <div class="share-steps">
+    <p>${iconMarkup(icons.download)}<span>Save a copy to your device.</span></p>
+    <p>${iconMarkup(icons.share)}<span>Open your sharing app and attach the downloaded file.</span></p>
+  </div>
+  <div class="dialog-actions">
+    <form method="dialog"><button class="outline">Back</button></form>
+    <a class="primary" id="share-download">${iconMarkup(icons.download)} Download file</a>
+  </div>
+</dialog>
+
 <dialog id="legal-dialog">
   <div id="legal-body"></div>
   <div class="dialog-actions">
@@ -339,6 +364,13 @@ const outputName = $('output-name');
 const queue = $('queue');
 const legalDialog = $('legal-dialog');
 const legalBody = $('legal-body');
+const delivery = bindDelivery({
+  getResult: () => result,
+  getFile: namedResult,
+  download,
+  nameInput: outputName,
+  browse: $('browse'),
+});
 
 const pagePicker = createPagePicker({
   grid: $('page-grid'),
@@ -376,6 +408,7 @@ function clearResult() {
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
   result = undefined;
+  delivery.reset();
   document.querySelector('.result').classList.remove('is-ready');
   $('save-options').hidden = true;
   $('continue-options').hidden = true;
@@ -527,9 +560,7 @@ function render(focusIndex, action) {
     details.className = 'file-details';
     const meta = document.createElement('span');
     meta.className = 'file-meta';
-    const size = file.size >= 1024 * 1024
-      ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
-      : Math.max(1, Math.ceil(file.size / 1024)) + ' KB';
+    const size = formatFileSize(file.size);
     meta.textContent = (mode === 'scan' ? 'Page ' + (index + 1) + ' · ' : '') + size;
     details.append(name, meta);
     if (mode !== 'scan') {
@@ -691,7 +722,12 @@ function finish(data) {
   syncOutputName();
   $('save-options').hidden = false;
   $('continue-options').hidden = data.blob.type !== 'application/pdf';
-  $('share-file').hidden = !navigator.canShare?.({ files: [namedResult()] });
+  const extension = data.filename.slice(dot);
+  const kind = { '.pdf': ['Save your PDF', 'PDF document'], '.docx': ['Save your document', 'Word document'], '.zip': ['Save your archive', 'ZIP archive'] }[extension];
+  $('delivery-title').textContent = kind[0];
+  $('delivery-type').textContent = kind[1];
+  $('delivery-size').textContent = formatFileSize(data.blob.size);
+  $('delivery-file-icon').innerHTML = iconMarkup(extension === '.zip' ? icons.archive : icons.file);
   document.querySelector('.result').classList.add('is-ready');
   report('Your download is ready.');
   outputName.focus();
@@ -709,22 +745,22 @@ function syncOutputName() {
   download.download = name;
   download.innerHTML = iconMarkup(icons.download) + '<span>Download</span>';
   download.setAttribute('aria-label', 'Download ' + name);
+  delivery.refresh();
 }
 
 function namedResult() {
   return new File([result.blob], download.download, { type: result.blob.type });
 }
 outputName.oninput = syncOutputName;
+outputName.onblur = () => {
+  if (!result) return;
+  const extension = result.filename.slice(result.filename.lastIndexOf('.'));
+  outputName.value = outputFilename(outputName.value, result.filename).slice(0, -extension.length);
+};
 outputName.onkeydown = event => {
   if (event.key === 'Enter' && result) {
     event.preventDefault();
     download.click();
-  }
-};
-$('share-file').onclick = async () => {
-  if (!result) return;
-  try { await navigator.share({ files: [namedResult()] }); } catch (error) {
-    if (error.name !== 'AbortError') report('Could not share this file. Use Download to save it.', true);
   }
 };
 // Signature canvas drawing setup

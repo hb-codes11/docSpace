@@ -12,12 +12,14 @@ import reset from 'lucide-static/icons/undo-2.svg?raw';
 import preview from 'lucide-static/icons/eye.svg?raw';
 import smartphone from 'lucide-static/icons/smartphone.svg?raw';
 import arrowRight from 'lucide-static/icons/arrow-right.svg?raw';
+import save from 'lucide-static/icons/folder-down.svg?raw';
+import archive from 'lucide-static/icons/file-archive.svg?raw';
 import plus from 'lucide-static/icons/plus.svg?raw';
 import chevron from 'lucide-static/icons/chevron-down.svg?raw';
 
 export const icons = {
   arrowUp, arrowDown, rotate, remove, edit, check, download, share,
-  file, image, reset, preview, smartphone, arrowRight, plus, chevron,
+  file, image, reset, preview, smartphone, arrowRight, plus, chevron, save, archive,
 };
 
 // Icons repeat a control's visible or accessible label, so keep them decorative.
