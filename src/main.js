@@ -112,10 +112,12 @@ app.innerHTML = `
       <strong id="drop-title">Drop PDF files here</strong>
       <span class="limit">Up to 100 MB and 500 pages per job</span>
       <div class="file-actions">
-        <button class="primary" id="take-photo" type="button" hidden>${iconMarkup(cameraIcon)} Take photo</button>
+        <label class="primary camera-action" id="take-photo" hidden>
+          ${iconMarkup(cameraIcon)} Take photo
+          <input type="file" id="camera-picker" accept="image/*" capture="environment" aria-label="Take photo">
+        </label>
         <button class="primary" id="browse" type="button">Choose PDFs</button>
       </div>
-      <input type="file" id="camera-picker" accept="image/*" capture="environment" hidden>
       <input type="file" id="picker" accept=".pdf,application/pdf" hidden>
     </div>
 
@@ -484,7 +486,7 @@ function render(focusIndex, action) {
   $('browse').disabled = Boolean(job);
   $('browse').className = mode === 'scan' ? 'outline' : 'primary';
   $('take-photo').hidden = mode !== 'scan';
-  $('take-photo').disabled = Boolean(job);
+  $('camera-picker').disabled = Boolean(job);
   $('scan-options').hidden = mode !== 'scan' || !files.length;
   $('grayscale').disabled = Boolean(job);
   $('process').innerHTML = iconMarkup(tool.icon) + '<span>' + (tool.actionText ?? tool.title) + '</span>';
@@ -829,11 +831,26 @@ $('continue-tool').onclick = () => {
 };
 $('reload-tool').onclick = () => location.reload();
 $('browse').onclick = () => picker.click();
-$('take-photo').onclick = () => $('camera-picker').click();
-$('camera-picker').onchange = event => {
-  if (mode === 'scan') addFiles([...event.target.files]);
-  event.target.value = '';
+const cameraPicker = $('camera-picker');
+let receivedCapture = false;
+cameraPicker.onclick = () => {
+  cameraPicker.value = '';
+  receivedCapture = false;
 };
+
+function acceptCameraPhoto() {
+  if (mode !== 'scan' || job || receivedCapture || !cameraPicker.files.length) return;
+  receivedCapture = true;
+  const photo = cameraPicker.files[0];
+  if (!photo.size) {
+    report('The camera returned an empty photo. Try again or use Choose photos.', true);
+    return;
+  }
+  addFiles([photo]);
+}
+
+cameraPicker.addEventListener('input', acceptCameraPhoto);
+cameraPicker.addEventListener('change', acceptCameraPhoto);
 $('grayscale').onchange = clearResult;
 picker.onchange = () => {
   addFiles([...picker.files]);

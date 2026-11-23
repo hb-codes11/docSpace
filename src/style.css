@@ -449,3 +449,24 @@ dialog label { display: block; margin-block: 16px 6px; }
     font-size: 22px;
   }
 }
+
+.camera-action {
+  position: relative;
+  cursor: pointer;
+}
+.camera-action input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: inherit;
+}
+.camera-action:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.camera-action:has(input:disabled) {
+  opacity: .45;
+  cursor: not-allowed;
+}

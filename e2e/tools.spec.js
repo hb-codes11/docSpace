@@ -512,3 +512,20 @@ test('shares the renamed result through the browser file-sharing interface', asy
   expect(shared.type).toBe('application/pdf');
   expect(shared.size).toBeGreaterThan(0);
 });
+
+test('accepts repeated photos through the scanner camera control', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/#/scan-document');
+  const buffer = await readFile(new URL('../public/icons/icon-192.png', import.meta.url));
+  for (let count = 1; count <= 2; count++) {
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByLabel('Take photo', { exact: true }).click(),
+    ]);
+    await chooser.setFiles({ name: 'capture.png', mimeType: 'image/png', buffer });
+    await expect(page.locator('.scan-thumbnail')).toHaveCount(count);
+  }
+  await page.getByRole('button', { name: 'Create scanned PDF' }).click();
+  const pdf = await PDFDocument.load(await result(page, 'scan.pdf'));
+  expect(pdf.getPageCount()).toBe(2);
+});
