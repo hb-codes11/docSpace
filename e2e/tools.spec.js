@@ -65,7 +65,7 @@ test('converts text to DOCX and reports image-only pages', async ({ page }) => {
   expect(document).toContain('pageBreakBefore');
   await page.locator('#picker').setInputFiles(await fixture('blank.pdf', [320]));
   await page.locator('#process').click();
-  await expect(page.getByRole('status').first()).toContainText('no selectable text');
+  await expect(page.locator('#status')).toContainText('no selectable text');
 });
 
 test('organizes pages by reordering, rotating and removing', async ({ page }) => {
@@ -213,10 +213,10 @@ test('follows the device theme and remembers a manual selection', async ({ page 
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByLabel('Color theme').selectOption('light');
+  await page.getByRole('button', { name: 'Light theme', exact: true }).click();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByLabel('Color theme').selectOption('system');
+  await page.getByRole('button', { name: 'Use device theme', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
@@ -393,7 +393,7 @@ test('exports JPG images and recovers from an invalid file and page range', asyn
   await page.locator('#process').click();
   await expect(page.locator('#status')).toContainText('within pages');
   await page.getByLabel('Pages to keep').fill('1');
-  await page.getByLabel('Image format').selectOption('image/jpeg');
+  await page.getByRole('radio', { name: 'JPG', exact: true }).click();
   await page.locator('#process').click();
   await page.getByLabel('Save as').fill('My export.zip.zip');
   const zip = await JSZip.loadAsync(await result(page, 'My export.zip'));
