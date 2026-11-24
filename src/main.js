@@ -5,6 +5,7 @@ import { tools } from './tools-data.js';
 import { renderToolLanding } from './components/landing.js';
 import { privacyPolicyContent, termsOfServiceContent, aboutContent } from './components/legal.js';
 import { getInitialRoute, syncUrlAndMetadata } from './router.js';
+import { bindCamera } from './camera.js';
 import { bindDelivery, formatFileSize } from './delivery.js';
 import { outputFilename } from './filenames.js';
 import { bindTheme, bindInstall } from './app-settings.js';
@@ -112,10 +113,7 @@ app.innerHTML = `
       <strong id="drop-title">Drop PDF files here</strong>
       <span class="limit">Up to 100 MB and 500 pages per job</span>
       <div class="file-actions">
-        <label class="primary camera-action" id="take-photo" hidden>
-          ${iconMarkup(cameraIcon)} Take photo
-          <input type="file" id="camera-picker" accept="image/*" capture="environment" aria-label="Take photo">
-        </label>
+        <button class="primary" id="take-photo" type="button" hidden>${iconMarkup(cameraIcon)} Open camera</button>
         <button class="primary" id="browse" type="button">Choose PDFs</button>
       </div>
       <input type="file" id="picker" accept=".pdf,application/pdf" hidden>
@@ -177,6 +175,12 @@ app.innerHTML = `
       </div>
     </div>
     <p id="page-feedback" aria-live="polite"></p>
+    <div id="page-tools" class="page-tools" role="group" aria-label="Batch page actions" hidden>
+      <span id="page-tools-count"></span>
+      <button type="button" class="outline" data-page-action="reverse">Reverse order</button>
+      <button type="button" class="outline" data-page-action="rotate">${iconMarkup(icons.rotate)} Rotate all</button>
+      <button type="button" class="outline" data-page-action="undo">${iconMarkup(icons.reset)} Undo edit</button>
+    </div>
     <ol id="page-grid" aria-label="PDF pages" hidden></ol>
 
     <div class="result">
@@ -280,6 +284,29 @@ app.innerHTML = `
   </form>
 </dialog>
 
+<dialog id="scan-camera" aria-labelledby="camera-title">
+  <div class="camera-heading">
+    <h2 id="camera-title">Scan with camera</h2>
+    <span id="camera-page-count"></span>
+  </div>
+  <div class="camera-stage" hidden>
+    <video autoplay muted playsinline aria-label="Live camera preview"></video>
+    <span class="camera-frame" aria-hidden="true"></span>
+  </div>
+  <p id="camera-status" role="status"></p>
+  <div class="camera-controls">
+    <button id="capture-frame" class="primary" type="button" disabled>${iconMarkup(cameraIcon)} Take photo</button>
+    <form method="dialog"><button class="outline" autofocus>Done</button></form>
+  </div>
+  <div class="camera-alternatives">
+    <label class="outline camera-action">
+      Use device camera
+      <input type="file" id="camera-picker" accept="image/*" capture="environment" aria-label="Use device camera">
+    </label>
+    <button id="camera-gallery" class="outline" type="button">Choose photos</button>
+  </div>
+</dialog>
+
 <dialog id="scan-editor" aria-labelledby="scan-editor-title">
   <h2 id="scan-editor-title">Crop and straighten</h2>
   <p>Drag the four corners to the edges of the document. You can also focus a corner and use the arrow keys.</p>
@@ -376,6 +403,7 @@ const delivery = bindDelivery({
 
 const pagePicker = createPagePicker({
   grid: $('page-grid'),
+  toolbar: $('page-tools'),
   feedback: $('page-feedback'),
   range: $('pages'),
   onEdit(isInitialLoad) {
@@ -427,6 +455,7 @@ function report(message, error = false) {
 
 function chooseTool(value, navigate = true) {
   if (!Object.hasOwn(tools, value) || value === mode || job) return;
+  if ($('scan-camera').open) $('scan-camera').close();
   if (tools[mode].kind !== tools[value].kind) files = [];
   clearSnapshot = undefined;
   clearEpoch++;
@@ -486,7 +515,7 @@ function render(focusIndex, action) {
   $('browse').disabled = Boolean(job);
   $('browse').className = mode === 'scan' ? 'outline' : 'primary';
   $('take-photo').hidden = mode !== 'scan';
-  $('camera-picker').disabled = Boolean(job);
+  $('take-photo').disabled = Boolean(job);
   $('scan-options').hidden = mode !== 'scan' || !files.length;
   $('grayscale').disabled = Boolean(job);
   $('process').innerHTML = iconMarkup(tool.icon) + '<span>' + (tool.actionText ?? tool.title) + '</span>';
@@ -656,23 +685,24 @@ function render(focusIndex, action) {
 }
 
 function addFiles(incoming) {
-  if (job || !incoming.length) return;
+  if (job || !incoming.length) return false;
   clearResult();
   const tool = tools[mode];
   if (!tool.multiple && incoming.length !== 1) {
     report('Choose one ' + (tool.kind ?? 'PDF') + ' for this tool.', true);
-    return;
+    return false;
   }
   const next = tool.multiple ? [...files, ...incoming] : incoming;
   if (next.length > 50 || next.reduce((total, file) => total + file.size, 0) > MAX_BYTES) {
     report('Choose up to 50 files totaling 100 MB or less.', true);
-    return;
+    return false;
   }
   clearSnapshot = undefined;
   clearEpoch++;
   files = next;
   resetPagePicker();
   render();
+  return true;
 }
 
 function clearFiles() {
@@ -831,26 +861,16 @@ $('continue-tool').onclick = () => {
 };
 $('reload-tool').onclick = () => location.reload();
 $('browse').onclick = () => picker.click();
-const cameraPicker = $('camera-picker');
-let receivedCapture = false;
-cameraPicker.onclick = () => {
-  cameraPicker.value = '';
-  receivedCapture = false;
-};
-
-function acceptCameraPhoto() {
-  if (mode !== 'scan' || job || receivedCapture || !cameraPicker.files.length) return;
-  receivedCapture = true;
-  const photo = cameraPicker.files[0];
-  if (!photo.size) {
-    report('The camera returned an empty photo. Try again or use Choose photos.', true);
-    return;
-  }
-  addFiles([photo]);
-}
-
-cameraPicker.addEventListener('input', acceptCameraPhoto);
-cameraPicker.addEventListener('change', acceptCameraPhoto);
+bindCamera({
+  dialog: $('scan-camera'),
+  openButton: $('take-photo'),
+  devicePicker: $('camera-picker'),
+  galleryPicker: picker,
+  addPhoto(photo) {
+    if (mode !== 'scan' || job) return;
+    return addFiles([photo]) ? files.length : false;
+  },
+});
 $('grayscale').onchange = clearResult;
 picker.onchange = () => {
   addFiles([...picker.files]);

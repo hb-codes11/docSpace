@@ -3,7 +3,7 @@ export const privacyPolicyContent = `
   <p class="legal-effective">Last updated November 2026</p>
 
   <h3>Documents</h3>
-  <p>docSpace processes documents in your browser. The document tools do not send your files, filenames, or extracted content to a server.</p>
+  <p>docSpace processes documents in your browser. The document tools do not send your files, filenames, or extracted content to a server. Camera frames stay in your browser. If you use Share file, the destination you choose handles the copy you share.</p>
 
   <h3>Optional accounts</h3>
   <p>If you sign in, Supabase handles your email address and stores your last-used tool and per-tool usage counts. Database policies limit access to your account records.</p>

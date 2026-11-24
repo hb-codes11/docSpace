@@ -199,7 +199,10 @@ test('scans two photos offline and downloads a named PDF on a phone layout', asy
   await expect(page.locator('#camera-picker')).toHaveAttribute('capture', 'environment');
 
   const image = await readFile(new URL('../public/icons/icon-192.png', import.meta.url));
+  await page.getByRole('button', { name: 'Open camera', exact: true }).click();
   await page.locator('#camera-picker').setInputFiles({ name: 'camera.png', mimeType: 'image/png', buffer: image });
+  await expect(page.locator('#camera-page-count')).toHaveText('1 page added');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.locator('#picker').setInputFiles({ name: 'gallery.png', mimeType: 'image/png', buffer: image });
   await expect(page.locator('.scan-thumbnail')).toHaveCount(2);
   await page.getByLabel('Grayscale').check();
@@ -517,15 +520,92 @@ test('accepts repeated photos through the scanner camera control', async ({ page
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/#/scan-document');
   const buffer = await readFile(new URL('../public/icons/icon-192.png', import.meta.url));
+  await page.getByRole('button', { name: 'Open camera', exact: true }).click();
   for (let count = 1; count <= 2; count++) {
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser'),
-      page.getByLabel('Take photo', { exact: true }).click(),
+      page.getByLabel('Use device camera', { exact: true }).click(),
     ]);
     await chooser.setFiles({ name: 'capture.png', mimeType: 'image/png', buffer });
-    await expect(page.locator('.scan-thumbnail')).toHaveCount(count);
+    await expect(page.locator('#camera-page-count')).toHaveText(count === 1 ? '1 page added' : '2 pages added');
   }
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.getByRole('button', { name: 'Create scanned PDF' }).click();
   const pdf = await PDFDocument.load(await result(page, 'scan.pdf'));
   expect(pdf.getPageCount()).toBe(2);
+});
+
+test('captures consecutive frames from a live camera stream and releases it', async ({ page, context, browserName }) => {
+  if (browserName === 'webkit') await context.grantPermissions(['camera']);
+  else await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async ({ audio, video }) => {
+      if (audio !== false || video.facingMode.ideal !== 'environment') throw new Error('Unexpected media constraints');
+      const source = document.createElement('canvas');
+      source.width = 240;
+      source.height = 320;
+      const ctx = source.getContext('2d');
+      const stream = source.captureStream(12);
+      window.cameraTestTrack = stream.getVideoTracks()[0];
+      let frame = 0;
+      const timer = setInterval(() => {
+        if (window.cameraTestTrack.readyState === 'ended') return clearInterval(timer);
+        ctx.fillStyle = frame++ % 2 ? '#fff' : '#eee';
+        ctx.fillRect(0, 0, 240, 320);
+        ctx.fillStyle = '#232831';
+        ctx.fillRect(35, 60, 170, 15);
+      }, 70);
+      return stream;
+    };
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/#/scan-document');
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Scan with camera' });
+  const shutter = dialog.getByRole('button', { name: 'Take photo', exact: true });
+  await shutter.click();
+  await dialog.locator('video').evaluate(video => {
+    window.capturedTrack = video.srcObject.getVideoTracks()[0];
+  });
+  await expect(dialog.locator('#camera-page-count')).toHaveText('1 page added');
+  await shutter.click();
+  await expect(dialog.locator('#camera-page-count')).toHaveText('2 pages added');
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await expect.poll(() => page.evaluate(() => window.capturedTrack.readyState)).toBe('ended');
+  await expect(page.locator('.scan-thumbnail')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Create scanned PDF' }).click();
+  expect((await PDFDocument.load(await result(page, 'scan.pdf'))).getPageCount()).toBe(2);
+});
+
+test('offers the photo library and device camera if live permission is denied', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Denied', 'NotAllowedError'); };
+  });
+  await page.goto('/#/scan-document');
+  await page.getByRole('button', { name: 'Open camera' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Scan with camera' });
+  await expect(dialog.getByRole('status')).toContainText('Live camera unavailable');
+  await expect(dialog.getByLabel('Use device camera')).toBeVisible();
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    dialog.getByRole('button', { name: 'Choose photos' }).click(),
+  ]);
+  await chooser.setFiles(new URL('../public/icons/icon-192.png', import.meta.url).pathname);
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.scan-thumbnail')).toHaveCount(1);
+});
+
+test('reverses and rotates all PDF pages and restores a removed page with undo', async ({ page }) => {
+  await page.goto('/#/organize-pdf');
+  await page.locator('#picker').setInputFiles(await fixture('pages.pdf', [210, 220, 230]));
+  const actions = page.getByRole('group', { name: 'Batch page actions' });
+  await expect(actions).toContainText('3 pages');
+  await actions.getByRole('button', { name: 'Reverse order' }).click();
+  await actions.getByRole('button', { name: 'Rotate all' }).click();
+  await page.getByRole('button', { name: 'Remove page 2' }).click();
+  await expect(actions).toContainText('2 pages');
+  await actions.getByRole('button', { name: 'Undo edit' }).click();
+  await expect(actions).toContainText('3 pages');
+  await page.locator('#process').click();
+  const pdf = await PDFDocument.load(await result(page, 'organized.pdf'));
+  expect(pdf.getPages().map(item => [item.getWidth(), item.getRotation().angle])).toEqual([[230, 90], [220, 90], [210, 90]]);
 });

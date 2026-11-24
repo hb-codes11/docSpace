@@ -1,13 +1,53 @@
 import { icons, iconMarkup } from './icons.js';
 import { pageSelection } from './ranges.js';
 
-export function createPagePicker({ grid, feedback, range, onEdit }) {
+export function createPagePicker({ grid, toolbar, feedback, range, onEdit }) {
   let controller;
   let pages = [];
   let urls = [];
   let organizing = false;
   let disabled = false;
   let dragged;
+  const history = [];
+  const reverse = toolbar.querySelector('[data-page-action="reverse"]');
+  const rotate = toolbar.querySelector('[data-page-action="rotate"]');
+  const undo = toolbar.querySelector('[data-page-action="undo"]');
+
+  function updateToolbar() {
+    toolbar.hidden = !organizing || !pages.length;
+    toolbar.querySelector('#page-tools-count').textContent = pages.length + (pages.length === 1 ? ' page' : ' pages');
+    reverse.disabled = disabled || pages.length < 2;
+    rotate.disabled = disabled || !pages.length;
+    undo.disabled = disabled || !history.length;
+  }
+
+  function remember() {
+    history.push(pages.map(page => ({ page, turn: page.turn })));
+    if (history.length > 30) history.shift();
+  }
+
+  function editAll(action, change) {
+    if (action.disabled) return;
+    remember();
+    change();
+    onEdit();
+    render();
+  }
+
+  reverse.onclick = () => editAll(reverse, () => pages.reverse());
+  rotate.onclick = () => editAll(rotate, () => {
+    for (const page of pages) page.turn = (page.turn + 90) % 360;
+  });
+  undo.onclick = () => {
+    if (undo.disabled) return;
+    pages = history.pop().map(({ page, turn }) => {
+      page.turn = turn;
+      return page;
+    });
+    onEdit();
+    render();
+    if (undo.disabled) rotate.focus();
+  };
 
   function reset() {
     controller?.abort();
@@ -15,6 +55,8 @@ export function createPagePicker({ grid, feedback, range, onEdit }) {
     urls.forEach(url => URL.revokeObjectURL(url));
     urls = [];
     pages = [];
+    history.length = 0;
+    updateToolbar();
     dragged = undefined;
     grid.replaceChildren();
     grid.hidden = true;
@@ -72,7 +114,10 @@ export function createPagePicker({ grid, feedback, range, onEdit }) {
         if (!dragged || disabled) return;
         event.preventDefault();
         event.stopPropagation();
-        move(dragged, position);
+        if (pages.indexOf(dragged) !== position) {
+          remember();
+          move(dragged, position);
+        }
         dragged = undefined;
         onEdit();
         render();
@@ -95,6 +140,7 @@ export function createPagePicker({ grid, feedback, range, onEdit }) {
         button.setAttribute('aria-label', action + ' ' + label.toLowerCase());
         button.disabled = disabled || unavailable;
         button.onclick = () => {
+          remember();
           run();
           onEdit();
           render([pages.includes(page) ? page.index : pages[Math.min(position, pages.length - 1)].index, action]);
@@ -106,6 +152,7 @@ export function createPagePicker({ grid, feedback, range, onEdit }) {
     });
     grid.replaceChildren(...rows);
     grid.hidden = !rows.length;
+    updateToolbar();
     if (focus) {
       const row = rows.find(card => Number(card.dataset.page) === focus[0]);
       const buttons = [...(row?.querySelectorAll('button:enabled') ?? [])];

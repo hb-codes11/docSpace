@@ -9,7 +9,7 @@
 ## What makes docSpace useful
 
 - **Your files stay on your device.** The tools work in the browser and are available without signing in.
-- **Scan from your phone.** Capture pages with the rear camera or choose photos, review their order, and create an A4 PDF. Open **Edit** on each page to adjust its corners, correct perspective, rotate it, or preview the result.
+- **Scan from your phone.** Open the live camera, capture several pages, then review their order and create an A4 PDF. The scanner also accepts photos from the device camera or photo library. Open **Edit** on each page to adjust its corners, correct perspective, rotate it, or preview the result.
 - **Save and share your result.** Enter a filename in **Save as**, then download it, choose a save location where supported, or send the generated file through your device’s share sheet. PDF, DOCX, and ZIP extensions stay correct.
 - **Work with pages visually.** Select thumbnails, drag pages into order, or enter a range like `1-3, 7`.
 - **Pick up where the last tool finished.** **Continue with this PDF** carries the output into another tool. The workspace adapts to desktop and mobile.
@@ -23,7 +23,7 @@
 | Document scanner | Creates a multipage A4 PDF from camera photos or browser-readable images. Grayscale is optional. |
 | Merge PDFs | Combines multiple PDFs in the order you choose. |
 | Split PDF | Extracts a range into one PDF or exports one PDF per selected page in a ZIP. |
-| Organize PDF | Reorders, rotates, and removes pages with a thumbnail preview. |
+| Organize PDF | Reorders, rotates, and removes pages with a thumbnail preview, batch rotation, reverse order, and undo. |
 | Images to PDF | Combines JPG and PNG files into a PDF. |
 | PDF to images | Exports selected pages as JPG or PNG in a ZIP, up to 50 pages per export. |
 | Compress scan | Re-renders scanned pages as lower-resolution images and offers a download when the result is smaller. Selectable text, links, forms, and annotations are lost. |

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
 const publicFiles = [
   '/manifest.webmanifest',
@@ -38,8 +38,55 @@ function offlineApp() {
   };
 }
 
-export default defineConfig({
-  plugins: [offlineApp()],
+function browserPolicy(mode) {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const key = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+  if (key && !/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) {
+    throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY must contain a Supabase publishable key.');
+  }
+  let accountOrigin = '';
+  if (env.VITE_SUPABASE_URL && key) {
+    const url = new URL(env.VITE_SUPABASE_URL);
+    if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+      throw new Error('VITE_SUPABASE_URL must be an HTTPS project origin.');
+    }
+    accountOrigin = ' ' + url.origin;
+  }
+
+  return {
+    name: 'docspace-browser-policy',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'pre',
+      handler() {
+        return [{
+          tag: 'meta',
+          attrs: {
+            'http-equiv': 'Content-Security-Policy',
+            content: [
+              "default-src 'none'",
+              "script-src 'self'",
+              "style-src 'self' 'unsafe-inline'",
+              "font-src 'self'",
+              "img-src 'self' blob: data:",
+              "media-src 'self' blob:",
+              "worker-src 'self' blob:",
+              "manifest-src 'self'",
+              "connect-src 'self'" + accountOrigin,
+              "base-uri 'none'",
+              "form-action 'none'",
+              "object-src 'none'",
+            ].join('; '),
+          },
+          injectTo: 'head-prepend',
+        }];
+      },
+    },
+  };
+}
+
+export default defineConfig(({ command, mode }) => ({
+  plugins: command === 'build' ? [browserPolicy(mode), offlineApp()] : [],
   worker: { format: 'es' },
   build: {
     target: 'es2022',
@@ -51,4 +98,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
