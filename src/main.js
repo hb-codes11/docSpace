@@ -17,6 +17,7 @@ import mergeIcon from 'lucide-static/icons/layers-2.svg?raw';
 import uploadIcon from 'lucide-static/icons/upload-cloud.svg?raw';
 import shieldIcon from 'lucide-static/icons/shield-check.svg?raw';
 import cameraIcon from 'lucide-static/icons/camera.svg?raw';
+import searchIcon from 'lucide-static/icons/search.svg?raw';
 
 const env = import.meta.env;
 const hasAccount = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
@@ -84,7 +85,12 @@ app.innerHTML = `
 
 <main class="shell studio">
   <aside class="rail">
-    <div class="rail-heading">Your tools <span>${Object.keys(tools).length}</span></div>
+    <div class="rail-heading">
+      <button class="outline" id="find-tool" type="button" aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
+        ${iconMarkup(searchIcon)} Find a tool
+        <kbd aria-hidden="true">${/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'}</kbd>
+      </button>
+    </div>
     <nav aria-label="PDF tools" class="tools">
       ${toolGroups.map(group => `
         <div class="tool-group">
@@ -99,13 +105,15 @@ app.innerHTML = `
         </div>
       `).join('')}
     </nav>
-    <p class="rail-note">${iconMarkup(shieldIcon)}<span>Private by design.<br>Processed on this device.</span></p>
   </aside>
 
   <section class="workbench" aria-labelledby="tool-title">
     <div class="tool-head">
-      <h2 id="tool-title">${tools[mode].title}</h2>
-      <p id="tool-hint">${tools[mode].hint}</p>
+      <span class="workbench-icon" id="workbench-icon" aria-hidden="true">${iconMarkup(tools[mode].icon)}</span>
+      <div>
+        <h2 id="tool-title" tabindex="-1">${tools[mode].title}</h2>
+        <p id="tool-hint">${tools[mode].hint}</p>
+      </div>
     </div>
 
     <div class="drop" id="drop" role="region" aria-label="File upload area">
@@ -269,6 +277,36 @@ app.innerHTML = `
     </div>
   </div>
 </footer>
+
+<dialog id="tool-finder" aria-labelledby="finder-title">
+  <div class="finder-heading">
+    <h2 id="finder-title">Find a tool</h2>
+    <form method="dialog"><button class="icon-button" aria-label="Close tool finder">${iconMarkup(icons.remove)}</button></form>
+  </div>
+  <div class="finder-search">
+    ${iconMarkup(searchIcon)}
+    <input id="tool-search" type="search" aria-label="Search tools" placeholder="Try scan, rotate, or DOCX" autocomplete="off" autocapitalize="none" spellcheck="false" autofocus>
+  </div>
+  <div class="finder-results" id="finder-results">
+    ${toolGroups.map(group => `
+      <section class="finder-group">
+        <h3>${group.title}</h3>
+        <div class="finder-grid">
+          ${group.ids.map(id => {
+            const tool = tools[id];
+            return `<button class="finder-tool" type="button" data-open-tool="${id}">
+              <span class="finder-icon">${iconMarkup(tool.icon)}</span>
+              <span class="finder-label"><strong>${tool.title}</strong><small>${tool.summary}</small></span>
+              <span class="finder-active" hidden>${iconMarkup(icons.check)}</span>
+            </button>`;
+          }).join('')}
+        </div>
+      </section>
+    `).join('')}
+    <p id="finder-empty" hidden>No matching tools. Try a file type or action.</p>
+  </div>
+  <p class="sr-only" id="finder-count" role="status"></p>
+</dialog>
 
 <dialog id="sign-in">
   <form id="sign-in-form">
@@ -456,6 +494,7 @@ function report(message, error = false) {
 function chooseTool(value, navigate = true) {
   if (!Object.hasOwn(tools, value) || value === mode || job) return;
   if ($('scan-camera').open) $('scan-camera').close();
+  resetDocumentOptions();
   if (tools[mode].kind !== tools[value].kind) files = [];
   clearSnapshot = undefined;
   clearEpoch++;
@@ -505,6 +544,10 @@ window.addEventListener('popstate', () => {
 
 function render(focusIndex, action) {
   const tool = tools[mode];
+  if ($('workbench-icon').dataset.tool !== mode) {
+    $('workbench-icon').innerHTML = iconMarkup(tool.icon);
+    $('workbench-icon').dataset.tool = mode;
+  }
   $('tool-title').textContent = tool.title;
   $('tool-hint').textContent = tool.hint;
   picker.multiple = Boolean(tool.multiple);
@@ -546,6 +589,7 @@ function render(focusIndex, action) {
   $('sign-options').hidden = mode !== 'sign' || !files.length;
   $('sign-page').disabled = $('sign-position').disabled = $('clear-signature').disabled = Boolean(job);
   pagePicker.setDisabled(Boolean(job));
+  $('find-tool').disabled = Boolean(job);
 
   for (const button of document.querySelectorAll('[data-mode]')) {
     button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
@@ -608,7 +652,7 @@ function render(focusIndex, action) {
       row.draggable = true;
       row.ondragstart = event => {
         draggedFile = index;
-        event.dataTransfer.setData('text/plain', file.name);
+        event.dataTransfer.setData('application/x-docspace-file-order', 'move');
       };
       row.ondragend = () => { draggedFile = undefined; };
       row.ondragover = event => { if (draggedFile !== undefined) event.preventDefault(); };
@@ -666,6 +710,7 @@ function render(focusIndex, action) {
           [files[index], files[index + move]] = [files[index + move], files[index]];
         } else {
           files.splice(index, 1);
+          if (!files.length) resetDocumentOptions();
           if (!tool.multiple) resetPagePicker();
         }
         clearResult();
@@ -699,6 +744,7 @@ function addFiles(incoming) {
   }
   clearSnapshot = undefined;
   clearEpoch++;
+  if (!tool.multiple) resetDocumentOptions();
   files = next;
   resetPagePicker();
   render();
@@ -709,6 +755,7 @@ function clearFiles() {
   if (job || !files.length) return;
   clearSnapshot = { files: [...files], edits: new Map(scanEdits), pages: pagePicker.getEdits() };
   files = [];
+  resetDocumentOptions();
   resetPagePicker();
   clearResult();
   render();
@@ -801,6 +848,19 @@ let sigCtx;
 let isDrawingSig = false;
 let hasSignatureStroke = false;
 
+function clearSignature() {
+  sigCtx?.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+  isDrawingSig = false;
+  hasSignatureStroke = false;
+}
+
+function resetDocumentOptions() {
+  clearSignature();
+  $('sign-page').value = '1';
+  $('sign-position').value = 'bottom-right';
+  $('watermark-text').value = '';
+}
+
 if (signatureCanvas) {
   sigCtx = signatureCanvas.getContext('2d');
   sigCtx.lineWidth = 2.5;
@@ -844,8 +904,7 @@ if (signatureCanvas) {
   signatureCanvas.addEventListener('lostpointercapture', endDraw);
 
   $('clear-signature').onclick = () => {
-    sigCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-    hasSignatureStroke = false;
+    clearSignature();
     clearResult();
   };
 }
@@ -993,11 +1052,10 @@ $('process').onclick = () => {
 };
 
 let preferenceWrite = Promise.resolve();
-document.querySelector('.tools').onclick = event => {
-  const button = event.target.closest('[data-mode]');
-  if (!button) return;
+function selectTool(value) {
   userSelectedTool = true;
-  chooseTool(button.dataset.mode);
+  if (value === mode || job) return;
+  chooseTool(value);
   if (session) {
     const record = { user_id: session.user.id, last_tool: mode };
     preferenceWrite = preferenceWrite.then(async () => {
@@ -1005,7 +1063,68 @@ document.querySelector('.tools').onclick = event => {
       if (error && session?.user.id === record.user_id) report('Could not sync your tool preference.', true);
     }).catch(() => report('Could not sync your tool preference.', true));
   }
+}
+
+document.querySelector('.tools').onclick = event => {
+  const button = event.target.closest('[data-mode]');
+  if (button) selectTool(button.dataset.mode);
 };
+
+const finder = $('tool-finder');
+const finderSearch = $('tool-search');
+const finderGroups = [...finder.querySelectorAll('.finder-group')];
+
+function filterTools() {
+  const terms = finderSearch.value.toLowerCase().trim().split(/\s+/);
+  let count = 0;
+  for (const group of finderGroups) {
+    const buttons = [...group.querySelectorAll('.finder-tool')];
+    for (const button of buttons) {
+      const tool = tools[button.dataset.openTool];
+      const haystack = (tool.title + ' ' + tool.summary).toLowerCase();
+      button.hidden = !terms.every(term => haystack.includes(term));
+      if (!button.hidden) count++;
+      button.querySelector('.finder-active').hidden = tool.id !== mode;
+      if (tool.id === mode) button.setAttribute('aria-current', 'true');
+      else button.removeAttribute('aria-current');
+    }
+    group.hidden = buttons.every(button => button.hidden);
+  }
+  $('finder-empty').hidden = count > 0;
+  $('finder-count').textContent = count === 1 ? '1 tool found' : `${count} tools found`;
+}
+
+function openToolFinder() {
+  if (job || document.querySelector('dialog[open]')) return;
+  finderSearch.value = '';
+  filterTools();
+  finder.showModal();
+  finderSearch.focus();
+}
+
+$('find-tool').onclick = openToolFinder;
+finderSearch.oninput = filterTools;
+finderSearch.onkeydown = event => {
+  if (event.isComposing || !['ArrowDown', 'Enter'].includes(event.key)) return;
+  const first = finder.querySelector('.finder-tool:not([hidden])');
+  if (!first) return;
+  event.preventDefault();
+  if (event.key === 'Enter') first.click();
+  else first.focus();
+};
+finder.onclick = event => {
+  const button = event.target.closest('[data-open-tool]');
+  if (!button) return;
+  finder.close();
+  selectTool(button.dataset.openTool);
+  $('tool-title').focus();
+};
+document.addEventListener('keydown', event => {
+  if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'k'
+    || !(event.metaKey || event.ctrlKey) || job || document.querySelector('dialog[open]')) return;
+  event.preventDefault();
+  openToolFinder();
+});
 
 async function recordToolUsage(userId, toolName) {
   if (!account || !userId) return;

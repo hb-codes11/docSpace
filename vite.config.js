@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { defineConfig, loadEnv } from 'vite';
 
 const publicFiles = [
@@ -11,6 +12,23 @@ const publicFiles = [
   '/icons/icon-maskable.png',
 ];
 
+function previewAssetPolicy() {
+  return {
+    name: 'docspace-preview-asset-policy',
+    configurePreviewServer(server) {
+      const { root, build } = server.config;
+      const headers = readFileSync(resolve(root, build.outDir, '_headers'), 'utf8');
+      const policy = headers.split(/\r?\n\r?\n/).find(rule => rule.split(/\r?\n/, 1)[0] === '/assets/*')
+        ?.match(/^\s*Content-Security-Policy:\s*(.+)$/m)?.[1];
+      if (!policy) throw new Error('The deployed asset policy is missing.');
+      server.middlewares.use('/assets', (_request, response, next) => {
+        response.setHeader('Content-Security-Policy', policy);
+        next();
+      });
+    },
+  };
+}
+
 function offlineApp() {
   return {
     name: 'docspace-offline',
@@ -20,6 +38,7 @@ function offlineApp() {
       const files = Object.keys(bundle).sort().map(file => '/' + file);
       const hash = createHash('sha256').update(template);
       hash.update(readFileSync(new URL('./index.html', import.meta.url)));
+      hash.update(readFileSync(new URL('./public/_headers', import.meta.url)));
       for (const path of files) {
         const item = bundle[path.slice(1)];
         hash.update(path).update(item.type === 'chunk' ? item.code : item.source);
@@ -86,7 +105,7 @@ function browserPolicy(mode) {
 }
 
 export default defineConfig(({ command, mode }) => ({
-  plugins: command === 'build' ? [browserPolicy(mode), offlineApp()] : [],
+  plugins: command === 'build' ? [browserPolicy(mode), offlineApp()] : [previewAssetPolicy()],
   worker: { format: 'es' },
   build: {
     target: 'es2022',

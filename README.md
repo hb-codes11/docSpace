@@ -12,6 +12,7 @@
 - **Scan from your phone.** Open the live camera, capture several pages, then review their order and create an A4 PDF. The scanner also accepts photos from the device camera or photo library. Open **Edit** on each page to adjust its corners, correct perspective, rotate it, or preview the result.
 - **Save and share your result.** Enter a filename in **Save as**, then download it, choose a save location where supported, or send the generated file through your device’s share sheet. PDF, DOCX, and ZIP extensions stay correct.
 - **Work with pages visually.** Select thumbnails, drag pages into order, or enter a range like `1-3, 7`.
+- **Find the right tool quickly.** Open **Find a tool** or press **Ctrl+K** (**⌘K** on Mac), then search by action or file type.
 - **Pick up where the last tool finished.** **Continue with this PDF** carries the output into another tool. The workspace adapts to desktop and mobile.
 
 > **Try a report workflow.** Merge your report and appendices, number the combined pages, then add a draft watermark. Download the finished PDF when you’re ready.
@@ -71,7 +72,7 @@ The browser suite runs against the production build. It verifies downloaded file
 | Accounts | Optional Supabase email sign-in stores the last-used tool and per-account usage counts. The database migrations set row-level security on account tables. |
 | Delivery | Vite builds static files into `dist/`. Netlify and Vercel configurations provide routing and headers. Earlier fingerprinted bundles in `public/assets/` help open tabs finish conversions after a release. |
 
-The core tools send no document bytes or filenames to Supabase. Closing or refreshing a tab clears the current workspace.
+The core tools send no document bytes or filenames to Supabase. Document-processing workers have a browser policy that blocks network requests. Closing or refreshing a tab clears the current workspace.
 
 ## Install on your phone
 

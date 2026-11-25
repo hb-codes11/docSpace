@@ -1,4 +1,31 @@
 import { test, expect } from '@playwright/test';
+
+test('finds and opens tools with the keyboard on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 670 });
+  await page.goto('/');
+  await page.keyboard.press('Control+k');
+  const dialog = page.getByRole('dialog', { name: 'Find a tool' });
+  const search = dialog.getByRole('searchbox', { name: 'Search tools' });
+  await expect(search).toBeFocused();
+  await expect(dialog.getByRole('button', { name: /Merge PDFs/ })).toHaveAttribute('aria-current', 'true');
+  await search.fill('xyz');
+  await expect(dialog.getByText('No matching tools.')).toBeVisible();
+  await search.fill('camera');
+  await search.press('ArrowDown');
+  const scanner = dialog.getByRole('button', { name: /Document scanner/ });
+  await expect(scanner).toBeFocused();
+  await scanner.press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Document scanner', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Open camera' })).toBeVisible();
+  const opener = page.getByRole('button', { name: 'Find a tool' });
+  await opener.click();
+  await expect(search).toHaveValue('');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  // Button clicks don't necessarily move focus on Safari.
+  await expect(opener).toBeVisible();
+});
 import { PDFDocument } from 'pdf-lib';
 import { readFile } from 'node:fs/promises';
 

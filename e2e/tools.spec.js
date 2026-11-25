@@ -23,6 +23,7 @@ async function result(page, name) {
 
 test('merge honors file order without sending documents', async ({ page }) => {
   const unexpected = [];
+  const workerPolicy = page.waitForResponse(response => /\/assets\/processor-[\w-]+\.js$/.test(response.url()));
   page.on('request', request => {
     const url = new URL(request.url());
     if (url.protocol === 'blob:') return;
@@ -34,6 +35,7 @@ test('merge honors file order without sending documents', async ({ page }) => {
   await page.locator('#process').click();
   const pdf = await PDFDocument.load(await result(page, 'merged.pdf'));
   expect(pdf.getPages().map(item => item.getWidth())).toEqual([310, 210]);
+  expect((await workerPolicy).headers()['content-security-policy']).toContain("connect-src 'none'");
   expect(unexpected).toEqual([]);
 });
 
@@ -83,11 +85,13 @@ test('organizes pages by reordering, rotating and removing', async ({ page }) =>
 });
 
 test('exports a selected page as PNG and combines images back into a PDF', async ({ page }) => {
+  const workerPolicy = page.waitForResponse(response => /\/assets\/pdf\.worker\.min-[\w-]+\.mjs$/.test(response.url()));
   await page.goto('/');
   await page.getByRole('button', { name: /PDF to images/ }).click();
   await page.locator('#picker').setInputFiles(await fixture('pages.pdf', [210, 220], 'An image'));
   await page.getByRole('button', { name: 'Page 2', exact: true }).click();
   await expect(page.getByLabel('Pages to keep')).toHaveValue('2');
+  expect((await workerPolicy).headers()['content-security-policy']).toContain("connect-src 'none'");
   await page.locator('#process').click();
   const zip = await JSZip.loadAsync(await result(page, 'page-images.zip'));
   expect(Object.keys(zip.files)).toEqual(['page-002.png']);
@@ -318,6 +322,10 @@ test('signs, sanitizes, and redacts a confidential document', async ({ page }) =
   const signedPdf = await PDFDocument.load(signedBuffer);
   expect(signedPdf.getPageCount()).toBe(1);
 
+  await page.locator('#picker').setInputFiles({ name: 'different-contract.pdf', mimeType: 'application/pdf', buffer });
+  await page.getByRole('button', { name: 'Apply signature' }).click();
+  await expect(page.locator('#status')).toContainText('Please draw your signature');
+
   // Switch to Sanitize PDF
   await page.getByRole('button', { name: /Sanitize & Strip Metadata/i }).click();
   await page.locator('#picker').setInputFiles({ name: 'contract.pdf', mimeType: 'application/pdf', buffer });
@@ -443,14 +451,12 @@ test('keeps signatures upright and at the displayed bottom right on rotated crop
   await page.goto('/#/sign-pdf');
   for (let index = 0; index < 4; index++) {
     await page.locator('#picker').setInputFiles({ name: 'rotated.pdf', mimeType: 'application/pdf', buffer });
-    if (index === 0) {
-      await page.locator('#signature-pad').scrollIntoViewIfNeeded();
-      const box = await page.locator('#signature-pad').boundingBox();
-      await page.mouse.move(box.x + 30, box.y + 40);
-      await page.mouse.down();
-      await page.mouse.move(box.x + 180, box.y + 100, { steps: 6 });
-      await page.mouse.up();
-    }
+    await page.locator('#signature-pad').scrollIntoViewIfNeeded();
+    const box = await page.locator('#signature-pad').boundingBox();
+    await page.mouse.move(box.x + 30, box.y + 40);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 180, box.y + 100, { steps: 6 });
+    await page.mouse.up();
     await page.getByLabel('Page number', { exact: true }).fill(String(index + 1));
     await page.locator('#process').click();
     buffer = await result(page, 'signed.pdf');
